@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1769e0">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Gastos">
-<title>Os Meus Gastos</title>
+<meta name="apple-mobile-web-app-title" content="Orçamento">
+<title>Orçamento familiar</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>
 :root{--bg:#f3f5f9;--card:#fff;--tx:#172033;--muted:#687386;--blue:#1769e0;--line:#e3e8f0;--red:#c0392b;--green:#14804a;--soft:#eaf1ff;--softtx:#174b9b;--inp:#fff}
@@ -34,7 +34,8 @@ h2{font-size:17px;margin:0 0 12px}
 .monthbar b{min-width:160px;text-align:center;text-transform:capitalize}
 .monthbar button{padding:8px 14px}
 .tabs{display:flex;gap:8px;margin-bottom:14px}
-.tabs button{flex:1;background:var(--soft);color:var(--softtx)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}.chips button{padding:6px 10px;font-size:13px;border-radius:99px}.chk{flex-direction:row!important;align-items:center;gap:8px!important}.chk input{width:auto}.mv{touch-action:pan-y}
+.tabs button{padding:10px 4px;font-size:14px;flex:1;background:var(--soft);color:var(--softtx)}
 .tabs button.active{background:var(--blue);color:#fff}
 .formgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .field{display:flex;flex-direction:column;gap:4px;min-width:0}
@@ -62,7 +63,9 @@ textarea{min-height:60px;resize:vertical}
 .hidden{display:none!important}
 .auth{max-width:420px;margin:6vh auto}
 .auth .field{margin-bottom:12px}
-.category-row{display:flex;gap:6px;align-items:center;margin-bottom:8px}
+.category-row{display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+.category-row input:first-child{flex:1;min-width:120px}
+.category-row input[type=number]{width:112px;flex:none}
 .empty{text-align:center;padding:22px;color:var(--muted)}
 footer{text-align:center;color:var(--muted);font-size:12px;padding:10px}
 @media(max-width:560px){.grid{grid-template-columns:1fr 1fr}.grid .stat:first-child{grid-column:1/-1}.formgrid,.filters{grid-template-columns:1fr}.full{grid-column:auto}.actions button{flex:1}}
@@ -71,7 +74,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:10px}
 <body>
 <div class="wrap">
 <header>
- <div><h1>Os Meus Gastos</h1><div class="small" id="syncStatus">A iniciar...</div></div>
+ <div><h1>Orçamento familiar</h1><div class="small" id="syncStatus">A iniciar...</div></div>
  <div id="headerActions" class="hidden"><button id="exportBtn" class="secondary">CSV</button> <button id="logoutBtn" class="ghost">Sair</button></div>
 </header>
 <div id="message" class="notice hidden" role="status"></div>
@@ -98,11 +101,12 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:10px}
   <button class="active" data-tab="movements">Movimentos</button>
   <button data-tab="summary">Resumo</button>
   <button data-tab="categories">Categorias</button>
+  <button data-tab="recurring">Recorrentes</button>
  </div>
 
  <section id="movementsTab">
   <div class="card">
-   <h2 id="formTitle">Adicionar movimento</h2>
+   <h2 id="formTitle">Adicionar movimento</h2><div id="chips" class="chips"></div>
    <form id="movementForm">
     <input type="hidden" id="movementId">
     <div class="formgrid">
@@ -110,10 +114,11 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:10px}
      <div class="field"><label for="amount">Valor (€)</label><input id="amount" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="0,00" required></div>
      <div class="field"><label for="date">Data</label><input id="date" type="date" required></div>
      <div class="field"><label for="category">Categoria</label><select id="category" required></select></div>
-     <div class="field full"><label for="description">Descrição</label><input id="description" maxlength="150" placeholder="Ex.: supermercado" required></div>
+     <div class="field full"><label for="description">Descrição</label><input id="description" list="descList" maxlength="150" placeholder="Ex.: supermercado" required><datalist id="descList"></datalist></div>
+     <div class="field full chk" id="repeatBox"><input type="checkbox" id="repeat"><label for="repeat">Repetir todos os meses</label></div>
      <div class="field full"><label for="notes">Notas (opcional)</label><textarea id="notes" maxlength="1000"></textarea></div>
     </div>
-    <div class="actions"><button id="saveBtn" type="submit">Guardar movimento</button><button id="cancelEdit" class="secondary hidden" type="button">Cancelar</button></div>
+    <div class="actions"><button id="saveBtn" type="submit">Guardar movimento</button><button id="cancelEdit" class="secondary hidden" type="button">Cancelar</button><button id="delEdit" class="danger hidden" type="button">Apagar</button></div>
    </form>
   </div>
   <div class="card">
@@ -122,13 +127,13 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:10px}
     <div class="field"><label for="categoryFilter">Categoria</label><select id="categoryFilter"><option value="">Todas</option></select></div>
     <div class="field"><label for="searchFilter">Pesquisar</label><input id="searchFilter" type="search" placeholder="Descrição ou notas"></div>
    </div>
-   <div id="movementRows"></div>
+   <div id="movementRows"></div><p class="small">Toca num movimento para editar; desliza para a esquerda para apagar.</p>
    <div id="emptyMovements" class="empty hidden">Sem movimentos neste mês.</div>
   </div>
  </section>
 
  <section id="summaryTab" class="hidden">
-  <div class="card"><h2>Para onde vai o dinheiro</h2><div id="breakdown"></div><p class="small">Toca numa categoria para ver os movimentos. A seta compara com o mês anterior.</p></div>
+  <div class="card"><h2>Para onde vai o dinheiro</h2><div id="budgetTotal"></div><div id="breakdown"></div><p class="small">Toca numa categoria para ver os movimentos. A seta compara com o mês anterior.</p></div>
   <div class="card"><h2>Últimos 6 meses</h2><div id="history"></div></div>
  </section>
 
@@ -137,7 +142,19 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:10px}
    <h2>Adicionar categoria</h2>
    <form id="categoryForm"><div class="field"><label for="newCategory">Nome</label><input id="newCategory" maxlength="50" required placeholder="Ex.: Animais"></div><div class="actions"><button type="submit">Adicionar</button></div></form>
   </div>
-  <div class="card"><h2>Gerir categorias</h2><p class="small">Mudar o nome altera também os movimentos existentes. Só se apagam categorias sem movimentos.</p><div id="categoryList"></div></div>
+  <div class="card"><h2>Gerir categorias</h2><div class="field" style="margin-bottom:10px"><label for="budgetScope">O orçamento aplica-se a</label><select id="budgetScope"></select></div><p class="small">Define o orçamento mensal de cada categoria (deixa vazio para não ter limite). Mudar o nome altera também os movimentos existentes. Só se apagam categorias sem movimentos.</p><div id="categoryList"></div></div>
+ </section>
+<section id="recurringTab" class="hidden">
+  <div class="card"><h2>Novo movimento recorrente</h2>
+   <form id="recForm"><div class="formgrid">
+    <div class="field"><label for="rType">Tipo</label><select id="rType"><option value="despesa">Despesa</option><option value="receita">Receita</option></select></div>
+    <div class="field"><label for="rAmount">Valor (€)</label><input id="rAmount" type="number" inputmode="decimal" min="0.01" step="0.01" required></div>
+    <div class="field"><label for="rDay">Dia do mês</label><input id="rDay" type="number" min="1" max="31" value="1" required></div>
+    <div class="field"><label for="rCat">Categoria</label><select id="rCat"></select></div>
+    <div class="field full"><label for="rDesc">Descrição</label><input id="rDesc" maxlength="150" placeholder="Ex.: renda, salário, Netflix" required></div>
+    <div class="field full"><label for="rStart">Começa em</label><input id="rStart" type="month" required></div>
+   </div><div class="actions"><button type="submit">Adicionar</button></div></form></div>
+  <div class="card"><h2>Recorrentes</h2><p class="small">São registados automaticamente, no dia indicado de cada mês, quando abres a app (num dos telemóveis).</p><div id="recList"></div></div>
  </section>
 </main>
 <footer>Dados sincronizados com Supabase</footer>
@@ -155,7 +172,7 @@ const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 const lc=s=>String(s).toLocaleLowerCase("pt-PT");
 const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
 
-let sb=null,user=null,movements=[],categories=[],channel=null,signup=false,timer=null;
+let sb=null,user=null,movements=[],categories=[],budgets={},bRows={},recs=[],recWarned=false,budgetWarned=false,channel=null,signup=false,timer=null;
 let month=today().slice(0,7);
 
 function msg(t,k=""){$("message").textContent=t;$("message").className="notice"+(k?" "+k:"")}
@@ -172,7 +189,7 @@ function initClient(){
  catch(e){msg("Erro na configuração do Supabase: "+e.message,"error");return false}
 }
 function showAuth(){$("authView").classList.remove("hidden");$("appView").classList.add("hidden");$("headerActions").classList.add("hidden");status("Sessão não iniciada")}
-function showApp(){$("authView").classList.add("hidden");$("appView").classList.remove("hidden");$("headerActions").classList.remove("hidden");$("date").value=today()}
+function showApp(){$("authView").classList.add("hidden");$("appView").classList.remove("hidden");$("headerActions").classList.remove("hidden");$("date").value=today();$("rStart").value=today().slice(0,7)}
 
 $("toggleAuth").onclick=()=>{
  signup=!signup;
@@ -198,7 +215,7 @@ $("authForm").addEventListener("submit",async e=>{
 async function startApp(){
  if(!user)return;
  showApp();clearMsg();status("A sincronizar...");
- await loadAll();subscribe();
+ await loadAll();subscribe();await processRecs();
 }
 
 async function loadAll(){
@@ -207,7 +224,7 @@ async function loadAll(){
   const r=await sb.from("gastos").select("id,user_id,data,descricao,categoria,valor,tipo,notas,created_at").order("data",{ascending:false}).limit(5000);
   if(r.error)throw r.error;
   movements=(r.data||[]).map(x=>({id:x.id,date:x.data,description:x.descricao||"",category:x.categoria||"Outras despesas",amount:Number(x.valor)||0,type:x.tipo==="receita"?"receita":"despesa",notes:x.notas||""}));
-  await loadCategories();
+  await loadCategories();await loadBudgets();await loadRecs();
   renderAll();
   status("Sincronizado · "+new Date().toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"}));
  }catch(err){status("Erro de sincronização");msg("Não foi possível sincronizar: "+err.message,"error")}
@@ -226,12 +243,64 @@ async function loadCategories(){
  categories=[...new Set([...saved,...used])].sort((a,b)=>a.localeCompare(b,"pt-PT"));
 }
 
-function renderAll(){renderMonth();renderOptions();renderStats();renderMovements();renderSummary();renderCategories()}
-function renderMonth(){$("monthLabel").textContent=monthName(month)}
+async function loadBudgets(){
+ const r=await sb.from("orcamentos_gastos").select("categoria,valor,mes");
+ bRows={};
+ if(r.error){budgets={};if(!budgetWarned){budgetWarned=true;msg("Orçamentos indisponíveis: falta criar/atualizar a tabela orcamentos_gastos no Supabase (SQL).","error")}return}
+ (r.data||[]).forEach(x=>{const m=x.mes||"*";(bRows[m]=bRows[m]||{})[x.categoria]=Number(x.valor)||0});
+}
+function calcBudgets(){budgets={...(bRows["*"]||{}),...(bRows[month]||{})}}
+async function loadRecs(){
+ const r=await sb.from("recorrentes_gastos").select("*").order("descricao");
+ if(r.error){recs=[];if(!recWarned){recWarned=true;msg("Recorrentes indisponíveis: falta criar a tabela recorrentes_gastos no Supabase (SQL).","error")}return}
+ recs=r.data||[];
+}
+/* Regista os recorrentes em atraso. O update condicionado em ultimo_mes garante que só um telemóvel regista cada mês. */
+async function processRecs(){
+ if(!user||!recs.length)return;
+ const t=today(),cm=t.slice(0,7),td=Number(t.slice(8));let n=0;
+ for(const rc of recs){
+  if(!rc.ativo)continue;
+  let prev=rc.ultimo_mes,m=shiftMonth(prev,1),g=0;
+  while(m<=cm&&g++<36){
+   const [y,mo]=m.split("-").map(Number),d=Math.min(rc.dia,new Date(y,mo,0).getDate());
+   if(m===cm&&td<d)break;
+   const c=await sb.from("recorrentes_gastos").update({ultimo_mes:m}).eq("id",rc.id).eq("ultimo_mes",prev).select("id");
+   if(c.error||!c.data||!c.data.length)break;
+   const ins=await sb.from("gastos").insert({user_id:user.id,data:`${m}-${pad(d)}`,descricao:rc.descricao,categoria:rc.categoria,valor:Number(rc.valor),tipo:rc.tipo,notas:"Recorrente"});
+   if(ins.error){await sb.from("recorrentes_gastos").update({ultimo_mes:prev}).eq("id",rc.id);break}
+   prev=m;m=shiftMonth(m,1);n++;
+  }
+ }
+ if(n){await loadAll();msg(`${n} movimento(s) recorrente(s) registado(s).`,"success")}
+}
+async function recUpdate(id,patch){const x=await sb.from("recorrentes_gastos").update(patch).eq("id",id);if(x.error)msg("Erro: "+x.error.message,"error");else{await loadAll();await processRecs()}}
+function renderRecs(){
+ $("recList").innerHTML=recs.length?recs.map(r=>`<div class="mv"><div class="l"><strong>${esc(r.descricao)}</strong><span class="small">Dia ${r.dia} · ${esc(r.categoria)} · ${r.tipo}${r.ativo?"":" · em pausa"}</span></div>
+ <div class="r"><b class="${r.tipo==="receita"?"pos":""}">${money(r.valor)}</b><button class="ghost" data-rv="${r.id}">Valor</button><button class="ghost" data-rp="${r.id}">${r.ativo?"Pausar":"Retomar"}</button><button class="danger" data-rd="${r.id}">Apagar</button></div></div>`).join(""):'<div class="empty">Ainda não há movimentos recorrentes.</div>';
+ const L=$("recList"),get=id=>recs.find(x=>String(x.id)===id);
+ L.querySelectorAll("[data-rv]").forEach(b=>b.onclick=()=>{const r=get(b.dataset.rv),v=Number(String(prompt("Novo valor (€), válido a partir do próximo registo:",r.valor)||"").replace(",","."));if(v>0)recUpdate(r.id,{valor:v})});
+ L.querySelectorAll("[data-rp]").forEach(b=>b.onclick=()=>{const r=get(b.dataset.rp),t=today(),cm=t.slice(0,7);recUpdate(r.id,r.ativo?{ativo:false}:{ativo:true,ultimo_mes:Number(t.slice(8))>=r.dia?cm:shiftMonth(cm,-1)})});
+ L.querySelectorAll("[data-rd]").forEach(b=>b.onclick=async()=>{const r=get(b.dataset.rd);if(!confirm(`Apagar «${r.descricao}»? Os movimentos já registados mantêm-se.`))return;const x=await sb.from("recorrentes_gastos").delete().eq("id",r.id);if(x.error)msg(x.error.message,"error");else await loadAll()});
+}
+function fillFrom(m,focus){
+ if(!m)return;
+ $("type").value=m.type;$("category").value=m.category;$("description").value=m.description;$("amount").value=m.amount;
+ if(focus){$("amount").focus();$("amount").select()}
+}
+function renderChips(){
+ const cut=shiftMonth(today().slice(0,7),-3)+"-01",f={};
+ movements.filter(m=>m.date>=cut).forEach(m=>{const o=f[lc(m.description)]||(f[lc(m.description)]={n:0,m});o.n++});
+ $("chips").innerHTML=Object.entries(f).sort((a,b)=>b[1].n-a[1].n).slice(0,6).map(([k,o])=>`<button type="button" class="secondary" data-chip="${esc(k)}">${esc(o.m.description)}</button>`).join("");
+ $("chips").querySelectorAll("[data-chip]").forEach(b=>b.onclick=()=>{if(!$("movementId").value)fillFrom(movements.find(m=>lc(m.description)===b.dataset.chip),true)});
+ $("descList").innerHTML=[...new Set(movements.map(m=>m.description))].slice(0,200).map(d=>`<option value="${esc(d)}">`).join("");
+}
+function renderAll(){calcBudgets();renderMonth();renderOptions();renderStats();renderMovements();renderSummary();renderCategories();renderRecs();renderChips()}
+function renderMonth(){$("monthLabel").textContent=monthName(month);const s=$("budgetScope"),v=s.value||"*";s.innerHTML=`<option value="*">Todos os meses</option><option value="m">Só ${monthName(month)}</option>`;s.value=v}
 function renderOptions(){
  const oc=$("category").value||store.get("lastCat"),of=$("categoryFilter").value;
  const opts=categories.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join("");
- $("category").innerHTML=opts;
+ $("category").innerHTML=opts;$("rCat").innerHTML=opts;
  $("categoryFilter").innerHTML='<option value="">Todas</option>'+opts;
  if(categories.includes(oc))$("category").value=oc;
  if(categories.includes(of))$("categoryFilter").value=of;
@@ -256,24 +325,33 @@ function renderMovements(){
  let last="",html="";
  for(const m of rows){
   if(m.date!==last){last=m.date;html+=`<div class="day">${esc(new Date(m.date+"T12:00").toLocaleDateString("pt-PT",{weekday:"short",day:"numeric",month:"short"}))}</div>`}
-  html+=`<div class="mv"><div class="l"><strong>${esc(m.description)}</strong><span class="small">${esc(m.category)}${m.notes?" · "+esc(m.notes):""}</span></div>
+  html+=`<div class="mv" data-edit="${esc(m.id)}"><div class="l"><strong>${esc(m.description)}</strong><span class="small">${esc(m.category)}${m.notes?" · "+esc(m.notes):""}</span></div>
   <div class="r"><b class="${m.type==="receita"?"pos":""}">${m.type==="receita"?"+":"−"}${money(m.amount)}</b>
-  <button class="ghost" data-edit="${esc(m.id)}">Editar</button><button class="danger" data-del="${esc(m.id)}">Apagar</button></div></div>`;
+  <button class="ghost" data-dup="${esc(m.id)}">Duplicar</button></div></div>`;
  }
  const box=$("movementRows");box.innerHTML=html;
- box.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>editMovement(b.dataset.edit));
- box.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>deleteMovement(b.dataset.del));
+ box.querySelectorAll("[data-edit]").forEach(el=>{
+  let x0=0,y0=0;
+  el.onclick=e=>{if(!e.target.closest("[data-dup]"))editMovement(el.dataset.edit)};
+  el.addEventListener("touchstart",e=>{x0=e.touches[0].clientX;y0=e.touches[0].clientY},{passive:true});
+  el.addEventListener("touchmove",e=>{const dx=e.touches[0].clientX-x0;if(dx<0&&Math.abs(dx)>Math.abs(e.touches[0].clientY-y0))el.style.transform=`translateX(${Math.max(dx,-110)}px)`},{passive:true});
+  el.addEventListener("touchend",e=>{const dx=e.changedTouches[0].clientX-x0;el.style.transform="";if(dx<-90&&Math.abs(e.changedTouches[0].clientY-y0)<40){e.preventDefault();deleteMovement(el.dataset.edit)}});
+ });
+ box.querySelectorAll("[data-dup]").forEach(b=>b.onclick=e=>{e.stopPropagation();const m=movements.find(x=>String(x.id)===b.dataset.dup);resetForm();fillFrom(m);$("notes").value=m.notes;window.scrollTo({top:0,behavior:"smooth"});msg("Copiado para o formulário. Ajusta e guarda.")});
 }
 function renderSummary(){
  const cur=movements.filter(m=>inMonth(m,month)&&m.type==="despesa"),prev=movements.filter(m=>inMonth(m,shiftMonth(month,-1))&&m.type==="despesa");
  const by=rows=>rows.reduce((o,m)=>(o[m.category]=(o[m.category]||0)+m.amount,o),{});
  const c=by(cur),p=by(prev),total=Object.values(c).reduce((a,b)=>a+b,0);
+ Object.keys(budgets).forEach(k=>{if(!(k in c))c[k]=0});
  const list=Object.entries(c).sort((a,b)=>b[1]-a[1]);
  $("breakdown").innerHTML=list.length?list.map(([k,v])=>{
-  const d=p[k]?v-p[k]:null;
+  const d=p[k]?v-p[k]:null,bd=budgets[k]||0;
   const arrow=d===null?"":`<span class="small ${d>0?"neg":"pos"}">${d>0?"▲":"▼"} ${money(Math.abs(d))}</span>`;
-  return `<div class="cat" data-c="${esc(k)}"><div class="t"><span>${esc(k)}</span><span><b>${money(v)}</b> <span class="small">${Math.round(v/total*100)}%</span></span></div>
-  <div class="bar"><i style="width:${Math.max(2,v/list[0][1]*100)}%"></i></div>${arrow}</div>`}).join(""):'<div class="empty">Sem despesas neste mês.</div>';
+  return `<div class="cat" data-c="${esc(k)}"><div class="t"><span>${esc(k)}</span><span><b>${money(v)}</b> <span class="small">${bd?"de "+money(bd):(total?Math.round(v/total*100)+"%":"")}</span></span></div>
+  <div class="bar"><i style="width:${bd?Math.min(100,v/bd*100):(list[0][1]?Math.max(2,v/list[0][1]*100):0)}%;${bd&&v>bd?"background:var(--red)":bd&&v>=bd*.8?"background:#e0a000":""}"></i></div>${bd?`<span class="small ${v>bd?"neg":""}">${v>bd?"Excedido em "+money(v-bd):"Restam "+money(bd-v)}</span> `:""}${arrow}</div>`}).join(""):'<div class="empty">Sem despesas neste mês.</div>';
+ const tb=Object.values(budgets).reduce((a,b)=>a+b,0),ts=Object.keys(budgets).reduce((x,k)=>x+(c[k]||0),0);
+ $("budgetTotal").innerHTML=tb?`<div class="cat" style="cursor:default"><div class="t"><span><b>Orçamento total</b></span><span><b>${money(ts)}</b> <span class="small">de ${money(tb)}</span></span></div><div class="bar"><i style="width:${Math.min(100,ts/tb*100)}%;${ts>tb?"background:var(--red)":""}"></i></div><span class="small ${ts>tb?"neg":""}">${ts>tb?"Excedido em "+money(ts-tb):"Restam "+money(tb-ts)}</span></div><hr style="border:0;border-top:1px solid var(--line);margin:0 0 12px">`:"";
  $("breakdown").querySelectorAll("[data-c]").forEach(el=>el.onclick=()=>{$("categoryFilter").value=el.dataset.c;renderMovements();openTab("movements")});
  const months=[];for(let i=5;i>=0;i--)months.push(shiftMonth(month,-i));
  const data=months.map(m=>({m,e:sum(movements.filter(x=>inMonth(x,m)),"despesa"),r:sum(movements.filter(x=>inMonth(x,m)),"receita")}));
@@ -282,9 +360,9 @@ function renderSummary(){
  <div class="bar"><i style="width:${d.e/max*100}%;background:var(--red)"></i></div></div>`).join("");
 }
 function renderCategories(){
- $("categoryList").innerHTML=categories.map(c=>`<div class="category-row"><input aria-label="Nome" value="${esc(c)}" maxlength="50" data-old="${esc(c)}">
+ $("categoryList").innerHTML=categories.map(c=>`<div class="category-row"><input aria-label="Nome" value="${esc(c)}" maxlength="50"><input type="number" inputmode="decimal" min="0" step="1" placeholder="Orçam. €" aria-label="Orçamento mensal" value="${shownBudget(c)||""}">
  <button class="secondary" data-save="${esc(c)}">Guardar</button><button class="danger" data-delc="${esc(c)}">Apagar</button></div>`).join("");
- $("categoryList").querySelectorAll("[data-save]").forEach(b=>b.onclick=()=>renameCategory(b.dataset.save,b.parentElement.querySelector("input").value));
+ $("categoryList").querySelectorAll("[data-save]").forEach(b=>b.onclick=()=>saveCategory(b.dataset.save,b.parentElement));
  $("categoryList").querySelectorAll("[data-delc]").forEach(b=>b.onclick=()=>deleteCategory(b.dataset.delc));
 }
 
@@ -298,9 +376,12 @@ $("movementForm").addEventListener("submit",async e=>{
   const r=id?await sb.from("gastos").update(row).eq("id",id).eq("user_id",user.id):await sb.from("gastos").insert(row);
   if(r.error)throw r.error;
   store.set("lastCat",row.categoria);
+  if(!id&&$("repeat").checked){const rr=await sb.from("recorrentes_gastos").insert({user_id:user.id,descricao:row.descricao,categoria:row.categoria,valor:row.valor,tipo:row.tipo,dia:Number(row.data.slice(8)),ativo:true,ultimo_mes:row.data.slice(0,7)});if(rr.error)throw rr.error}
   month=row.data.slice(0,7); /* mostra logo o mês do movimento guardado */
   resetForm();await loadAll();
-  msg(id?"Movimento atualizado.":"Movimento guardado.","success");
+  const bd=budgets[row.categoria],spent=sum(movements.filter(m=>m.category===row.categoria&&inMonth(m,month)),"despesa");
+  if(row.tipo==="despesa"&&bd&&spent>bd)msg(`Guardado, mas «${row.categoria}» já passou o orçamento: ${money(spent)} de ${money(bd)}.`,"error");
+  else msg(id?"Movimento atualizado.":"Movimento guardado.","success");
  }catch(err){msg("Erro ao guardar: "+err.message,"error")}
  finally{$("saveBtn").disabled=false}
 });
@@ -309,15 +390,26 @@ function editMovement(id){
  $("movementId").value=m.id;$("type").value=m.type;$("amount").value=m.amount;$("date").value=m.date;
  $("category").value=m.category;$("description").value=m.description;$("notes").value=m.notes;
  $("formTitle").textContent="Editar movimento";$("saveBtn").textContent="Guardar alterações";
- $("cancelEdit").classList.remove("hidden");window.scrollTo({top:0,behavior:"smooth"});
+ $("cancelEdit").classList.remove("hidden");$("delEdit").classList.remove("hidden");$("repeatBox").classList.add("hidden");window.scrollTo({top:0,behavior:"smooth"});
 }
 function resetForm(){
  const c=$("category").value;
  $("movementForm").reset();$("movementId").value="";$("date").value=today();
  if(categories.includes(c))$("category").value=c;
- $("formTitle").textContent="Adicionar movimento";$("saveBtn").textContent="Guardar movimento";$("cancelEdit").classList.add("hidden");
+ $("formTitle").textContent="Adicionar movimento";$("saveBtn").textContent="Guardar movimento";$("cancelEdit").classList.add("hidden");$("delEdit").classList.add("hidden");$("repeatBox").classList.remove("hidden");
 }
 $("cancelEdit").onclick=resetForm;
+$("delEdit").onclick=()=>{const id=$("movementId").value;if(id){resetForm();deleteMovement(id)}};
+$("description").addEventListener("change",()=>{if($("movementId").value)return;const m=movements.find(x=>lc(x.description)===lc($("description").value.trim()));if(m){$("type").value=m.type;$("category").value=m.category;if(!$("amount").value)$("amount").value=m.amount}});
+$("budgetScope").onchange=renderCategories;
+$("recForm").addEventListener("submit",async e=>{
+ e.preventDefault();
+ const v=Number($("rAmount").value),dia=Math.min(31,Math.max(1,Number($("rDay").value)||1)),st=$("rStart").value||today().slice(0,7);
+ if(!(v>0))return;
+ const x=await sb.from("recorrentes_gastos").insert({user_id:user.id,descricao:$("rDesc").value.trim(),categoria:$("rCat").value,valor:v,tipo:$("rType").value,dia,ativo:true,ultimo_mes:shiftMonth(st,-1)});
+ if(x.error){msg("Erro: "+x.error.message,"error");return}
+ $("recForm").reset();$("rStart").value=today().slice(0,7);await loadAll();await processRecs();msg("Recorrente criado.","success");
+});
 async function deleteMovement(id){
  const m=movements.find(x=>String(x.id)===String(id));
  if(!m||!confirm(`Apagar «${m.description}»? Não pode ser desfeito.`))return;
@@ -331,6 +423,26 @@ $("categoryForm").addEventListener("submit",async e=>{
  try{const r=await sb.from("categorias_gastos").insert({user_id:user.id,nome:name});if(r.error)throw r.error;$("newCategory").value="";await loadAll();msg("Categoria criada.","success")}
  catch(err){msg("Não foi possível criar: "+err.message,"error")}
 });
+async function saveBudget(cat,v){
+ const mes=$("budgetScope").value==="m"?month:"*";
+ try{
+  const r=v>0?await sb.from("orcamentos_gastos").upsert({user_id:user.id,categoria:cat,valor:v,mes},{onConflict:"user_id,categoria,mes"}):await sb.from("orcamentos_gastos").delete().eq("user_id",user.id).eq("categoria",cat).eq("mes",mes);
+  if(r.error)throw r.error;
+  await loadAll();msg(v>0?"Orçamento guardado.":"Orçamento removido (volta a valer o de todos os meses, se existir).","success");
+ }catch(err){msg("Erro ao guardar o orçamento: "+err.message,"error")}
+}
+const shownBudget=c=>$("budgetScope").value==="m"?(budgets[c]||0):((bRows["*"]||{})[c]||0);
+async function saveCategory(o,row){
+ const [ni,bi]=row.querySelectorAll("input"),n=ni.value.trim(),b=Number(bi.value)||0,bChanged=b!==shownBudget(o);
+ if(n!==o){
+  await renameCategory(o,n);
+  if(categories.includes(o)||!categories.includes(n))return;
+  await sb.from("orcamentos_gastos").update({categoria:n}).eq("user_id",user.id).eq("categoria",o);
+  await sb.from("recorrentes_gastos").update({categoria:n}).eq("user_id",user.id).eq("categoria",o);
+  if(bChanged)await saveBudget(n,b);else await loadAll();
+ }else if(bChanged)await saveBudget(o,b);
+ else msg("Não há alterações a guardar.");
+}
 async function renameCategory(o,n){
  n=n.trim();
  if(!n){msg("O nome não pode ficar vazio.","error");return}
@@ -344,9 +456,9 @@ async function renameCategory(o,n){
  }catch(err){msg("Erro ao alterar: "+err.message,"error")}
 }
 async function deleteCategory(name){
- if(movements.some(m=>m.category===name)){msg("Esta categoria tem movimentos. Muda primeiro a categoria desses movimentos.","error");return}
+ if(movements.some(m=>m.category===name)||recs.some(r=>r.categoria===name)){msg("Esta categoria tem movimentos. Muda primeiro a categoria desses movimentos.","error");return}
  if(!confirm(`Apagar a categoria «${name}»?`))return;
- try{const r=await sb.from("categorias_gastos").delete().eq("user_id",user.id).eq("nome",name);if(r.error)throw r.error;await loadAll();msg("Categoria apagada.","success")}
+ try{const r=await sb.from("categorias_gastos").delete().eq("user_id",user.id).eq("nome",name);if(r.error)throw r.error;await sb.from("orcamentos_gastos").delete().eq("user_id",user.id).eq("categoria",name);await loadAll();msg("Categoria apagada.","success")}
  catch(err){msg("Erro ao apagar: "+err.message,"error")}
 }
 
@@ -356,7 +468,7 @@ $("nextM").onclick=()=>{month=shiftMonth(month,1);renderAll()};
 
 function openTab(t){
  document.querySelectorAll("[data-tab]").forEach(x=>x.classList.toggle("active",x.dataset.tab===t));
- ["movements","summary","categories"].forEach(n=>$(n+"Tab").classList.toggle("hidden",n!==t));
+ ["movements","summary","categories","recurring"].forEach(n=>$(n+"Tab").classList.toggle("hidden",n!==t));
 }
 document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>openTab(b.dataset.tab));
 
@@ -366,7 +478,7 @@ $("exportBtn").onclick=()=>{
  const data=[["Data","Descrição","Categoria","Tipo","Valor (€)","Notas"],...rows.map(m=>[m.date,m.description,m.category,m.type,m.amount.toFixed(2).replace(".",","),m.notes])];
  const csv="\uFEFF"+data.map(r=>r.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(";")).join("\r\n");
  const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8;"}));
- const a=document.createElement("a");a.href=url;a.download=`gastos-${month}.csv`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+ const a=document.createElement("a");a.href=url;a.download=`orcamento-familiar-${month}.csv`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
  msg("Exportação iniciada.","success");
 };
 
@@ -376,11 +488,13 @@ function subscribe(){
  channel=sb.channel("gastos-sync-"+user.id)
   .on("postgres_changes",{...f,table:"gastos",filter:"user_id=eq."+user.id},refresh)
   .on("postgres_changes",{...f,table:"categorias_gastos",filter:"user_id=eq."+user.id},refresh)
+  .on("postgres_changes",{...f,table:"orcamentos_gastos",filter:"user_id=eq."+user.id},refresh)
+  .on("postgres_changes",{...f,table:"recorrentes_gastos",filter:"user_id=eq."+user.id},refresh)
   .subscribe(s=>{if(s==="SUBSCRIBED")status("Sincronização ativa")});
 }
 function refresh(){clearTimeout(timer);timer=setTimeout(loadAll,500)}
 /* No iPhone a ligação em tempo real pode cair em segundo plano: recarrega ao voltar à app. */
-document.addEventListener("visibilitychange",()=>{if(!document.hidden&&user)loadAll()});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&user)loadAll().then(processRecs)});
 
 $("logoutBtn").onclick=async()=>{
  if(channel)await sb.removeChannel(channel);
@@ -397,4 +511,3 @@ if(initClient()){
 </script>
 </body>
 </html>
-
