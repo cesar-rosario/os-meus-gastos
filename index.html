@@ -1,549 +1,85 @@
 <!DOCTYPE html>
 <html lang="pt-PT">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Orçamento Familiar</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-:root{--bg:#f4f5f7;--card:#fff;--tx:#14181f;--mu:#667085;--ac:#1f6feb;--g:#12a150;--rd:#d92d20;--bd:#e3e6ea;
-box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1318;--card:#1a2029;--tx:#eef1f5;--mu:#9aa5b4;--ac:#5b9bff;--g:#3ccf7e;--rd:#ff6b5e;--bd:#2a323d}}
-:root[data-theme="dark"]{--bg:#0f1318;--card:#1a2029;--tx:#eef1f5;--mu:#9aa5b4;--ac:#5b9bff;--g:#3ccf7e;--rd:#ff6b5e;--bd:#2a323d}
-*{box-sizing:border-box}
-html{scroll-padding-top:env(safe-area-inset-top,0px)}
-body{margin:0;background:var(--bg);color:var(--tx);font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;padding:16px 16px 150px}
-main{max-width:640px;margin:0 auto}
-h1{font-size:22px;margin:4px 0 14px}h2{font-size:16px;margin:0 0 10px}
-.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:16px;margin-bottom:14px}
-label{display:block;font-size:13px;color:var(--mu);margin:10px 0 4px}
-input,select{width:100%;font-size:16px;padding:11px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx)}
-.mnav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.mnav b{font-size:18px;text-transform:capitalize}
-.mnav button{width:42px;height:42px;border:1px solid var(--bd);border-radius:12px;background:var(--card);color:var(--tx);font-size:20px}
-.kv{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.kv3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
-.kv div,.kv3 div{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:10px}
-.kv div{background:var(--bg);border:0}
-.kv small,.kv3 small{display:block;color:var(--mu);font-size:12px}.kv b,.kv3 b{font-size:15px}
-.r{color:var(--g)}.d{color:var(--rd)}
-.dh{display:flex;justify-content:space-between;color:var(--mu);font-size:12px;margin:14px 4px 6px;text-transform:capitalize}
-.it{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:11px 12px;margin-bottom:6px;cursor:pointer}
-.ic{font-size:22px}.it .tx{flex:1;min-width:0}.it small{display:block;color:var(--mu);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.empty{color:var(--mu);text-align:center;padding:28px 0}
-.cb{margin-bottom:14px}.ch{display:flex;justify-content:space-between;font-size:14px;margin-bottom:5px}.ch small{color:var(--mu);font-weight:400}
-.bar{height:10px;border-radius:5px;background:var(--bg);overflow:hidden}.bar span{display:block;height:100%}
-.bd{font-size:12px;color:var(--mu);margin-top:4px}.bd.over{color:var(--rd)}
-svg{width:100%;height:auto;display:block}
-.btn{width:100%;padding:13px;border:0;border-radius:10px;background:var(--ac);color:#fff;font-size:16px;font-weight:600;margin-top:8px}
-.btn.s{background:var(--bg);color:var(--tx);border:1px solid var(--bd)}
-.btn.dg{background:transparent;color:var(--rd);border:1px solid var(--rd)}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px}
-.seg button{padding:11px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx);font-size:15px}
-.seg button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
-.cr{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--bd);font-size:14px}
-.cr span{flex:1}.cr input{width:110px;padding:7px}.cr button{border:0;background:none;color:var(--rd);font-size:16px;padding:6px}
-.ov{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;z-index:20}
-.sheet{background:var(--card);width:100%;max-width:640px;margin:0 auto;border-radius:18px 18px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px));max-height:92vh;overflow:auto}
-.fab{position:fixed;right:18px;bottom:calc(76px + env(safe-area-inset-bottom,0px));width:58px;height:58px;border-radius:50%;border:0;background:var(--ac);color:#fff;font-size:32px;box-shadow:0 4px 14px rgba(0,0,0,.3);z-index:10}
-nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--bd);padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));z-index:10}
-nav button{flex:1;border:0;background:none;color:var(--mu);font-size:12px;padding:6px 0;display:flex;flex-direction:column;align-items:center;gap:2px}
-nav button span{font-size:20px}nav button.on{color:var(--ac);font-weight:600}
-.stat{font-size:12px;color:var(--mu);text-align:center;margin-top:8px;min-height:16px}
-.hide{display:none}
-</style>
-</head>
-<body>
-<main>
-  
-<section class="card" id="authBox">
-  <h2>☁️ Sincronização</h2>
-  <p id="authStatus" style="font-size:13px;color:var(--mu)">
-    Inicia sessão para sincronizar os teus movimentos.
-  </p>
-
-  <div id="authForm">
-    <label for="authEmail">Email</label>
-    <input id="authEmail" type="email"
-      autocomplete="username" placeholder="O teu email">
-
-    <label for="authPassword">Palavra-passe</label>
-    <input id="authPassword" type="password"
-      autocomplete="current-password" placeholder="Palavra-passe">
-
-    <button class="btn" id="authLogin">Iniciar sessão</button>
-  </div>
-
-  <button class="btn s hide" id="authLogout">
-    Terminar sessão
-  </button>
-</section>
-
-<div class="mnav" id="mnav"><button id="pv" aria-label="Mês anterior">‹</button><b id="mlab"></b><button id="nx" aria-label="Mês seguinte">›</button></div>
-
-<section id="t-mov">
-<div class="kv3"><div><small>Receitas</small><b class="r" id="sr"></b></div><div><small>Despesas</small><b class="d" id="sd"></b></div><div><small>Saldo</small><b id="ss"></b></div></div>
-<select id="fc"></select>
-<div id="lst"></div>
-</section>
-
-<section id="t-res" class="hide"><div id="res"></div></section>
-
-<section id="t-set" class="hide">
-<h1>Definições</h1>
-<div class="card">
-<label for="cur">Moeda</label>
-<select id="cur"><option value="EUR">Euro (€)</option><option value="USD">Dólar (US$)</option><option value="GBP">Libra (£)</option><option value="BRL">Real (R$)</option><option value="CHF">Franco suíço (CHF)</option></select>
-<label for="th">Tema</label>
-<select id="th"><option value="auto">Automático</option><option value="light">Claro</option><option value="dark">Escuro</option></select>
-</div>
-<div class="card"><h2>Categorias e orçamentos</h2>
-<div id="cl"></div>
-<label>Nova categoria</label>
-<div class="row"><input id="ni" placeholder="Emoji" maxlength="4"><select id="nt2"><option value="d">Despesa</option><option value="r">Receita</option></select></div>
-<input id="nn" placeholder="Nome" style="margin-top:8px">
-<button class="btn s" id="nadd">Adicionar categoria</button>
-</div>
-<div class="card" id="exc"><h2>Exportar</h2>
-<button class="btn s" id="e1">Exportar este mês (CSV)</button>
-<button class="btn s" id="e2">Exportar tudo (CSV)</button>
-<div class="stat" id="stat"></div></div>
-<div class="card"><h2>Dados</h2>
-<p style="font-size:13px;color:var(--mu);margin:0 0 6px">Os movimentos ficam guardados apenas neste dispositivo. Exporte de vez em quando para ter uma cópia de segurança.</p>
-<button class="btn dg" id="clr">Apagar todos os movimentos</button></div>
-</section>
-</main>
-
-<button class="fab" id="fab" aria-label="Novo movimento">+</button>
-<nav>
-<button id="n-mov" class="on"><span>🧾</span>Movimentos</button>
-<button id="n-res"><span>📊</span>Resumo</button>
-<button id="n-set"><span>⚙️</span>Definições</button>
-</nav>
-
-<div class="ov hide" id="sh"><div class="sheet">
-<h2 id="sht">Novo movimento</h2>
-<div class="seg"><button id="tpd" class="on">Despesa</button><button id="tpr">Receita</button></div>
-<label for="v">Valor</label><input id="v" type="text" inputmode="decimal" placeholder="0,00">
-<label for="ct">Categoria</label><select id="ct"></select>
-<div class="row"><div><label for="dt">Data</label><input id="dt" type="date"></div><div><label for="nt">Nota</label><input id="nt" placeholder="Opcional"></div></div>
-<button class="btn" id="sv">Guardar</button>
-<button class="btn dg hide" id="del">Apagar movimento</button>
-<button class="btn s" id="cx">Cancelar</button>
-</div></div>
-
+:root{--bg:#f4f6fa;--card:#fff;--tx:#182230;--mu:#667085;--ac:#246bfe;--good:#12945b;--bad:#d92d20;--bd:#e1e6ef;--soft:#edf3ff}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:env(safe-area-inset-top) 14px calc(100px + env(safe-area-inset-bottom))}main{max-width:720px;margin:auto}h1{font-size:23px;margin:10px 0 16px}h2{font-size:16px;margin:0 0 12px}.muted{color:var(--mu);font-size:13px}.card{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:15px;margin:12px 0}.row{display:flex;gap:9px;align-items:center}.row>*{min-width:0;flex:1}.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0}.metric{background:var(--card);border:1px solid var(--bd);border-radius:13px;padding:11px;min-width:0}.metric small{display:block;color:var(--mu);font-size:12px}.metric b{display:block;font-size:clamp(12px,3.5vw,17px);overflow-wrap:anywhere;margin-top:5px}.good{color:var(--good)}.bad{color:var(--bad)}input,select,button{font:inherit}input,select{width:100%;padding:11px;border:1px solid var(--bd);border-radius:10px;background:var(--card);color:var(--tx);min-width:0}label{display:block;color:var(--mu);font-size:12px;margin:9px 0 4px}.btn{border:0;border-radius:10px;background:var(--ac);color:white;padding:12px 14px;font-weight:600;cursor:pointer}.btn.secondary{background:var(--soft);color:var(--ac)}.btn.ghost{background:transparent;color:var(--tx);border:1px solid var(--bd)}.btn.danger{background:transparent;color:var(--bad);border:1px solid #f2b8b5}.btn.small{padding:8px 10px;font-size:13px}.btn.full{width:100%;margin-top:8px}.mnav{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:10px 0}.mnav button{width:42px;height:42px;border:1px solid var(--bd);border-radius:12px;background:var(--card);color:var(--tx);font-size:23px}.mnav strong{text-transform:capitalize}.movement{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin:7px 0;cursor:pointer}.emoji{font-size:23px}.mtext{flex:1;min-width:0}.mtext b{display:block}.mtext small{display:block;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dayhead{display:flex;justify-content:space-between;color:var(--mu);font-size:12px;margin:15px 4px 5px}.empty{text-align:center;color:var(--mu);padding:28px 10px}.bar{height:9px;background:var(--bg);border-radius:8px;overflow:hidden;margin-top:7px}.bar span{display:block;height:100%;background:var(--ac)}.catrow{border-bottom:1px solid var(--bd);padding:10px 0}.catrow:last-child{border:0}.catfields{display:grid;grid-template-columns:62px minmax(0,1fr);gap:7px}.catbottom{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;margin-top:7px}.tabs{position:fixed;z-index:10;bottom:0;left:0;right:0;display:flex;justify-content:center;background:var(--card);border-top:1px solid var(--bd);padding:7px 5px calc(7px + env(safe-area-inset-bottom))}.tabs button{flex:1;max-width:230px;border:0;background:none;color:var(--mu);padding:6px;font-size:12px}.tabs button span{display:block;font-size:20px;margin-bottom:2px}.tabs button.active{color:var(--ac);font-weight:700}.fab{position:fixed;right:max(18px,calc((100vw - 720px)/2));bottom:calc(78px + env(safe-area-inset-bottom));width:56px;height:56px;border:0;border-radius:50%;background:var(--ac);color:#fff;font-size:31px;box-shadow:0 4px 15px #0003;z-index:9}.overlay{position:fixed;inset:0;background:#0007;z-index:20;display:flex;align-items:flex-end}.sheet{width:100%;max-width:720px;margin:auto;background:var(--card);border-radius:20px 20px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));max-height:94vh;overflow:auto}.hidden{display:none!important}.status{font-size:13px;color:var(--mu);margin-top:8px;white-space:pre-wrap}.status.error{color:var(--bad)}.status.ok{color:var(--good)}.searchrow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}.topline{display:flex;justify-content:space-between;align-items:center;gap:8px}.topline h2{margin:0}.pill{font-size:11px;background:var(--soft);color:var(--ac);border-radius:20px;padding:5px 8px}.chart{width:100%;height:auto;display:block}.exportgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}@media(min-width:560px){body{padding-left:20px;padding-right:20px}.catfields{grid-template-columns:72px minmax(0,1fr) 130px}.catbottom{grid-template-columns:1fr auto auto;margin-top:0}}
+</style></head>
+<body><main>
+<section id="login" class="card hidden"><h1>Orçamento Familiar</h1><p class="muted">Inicia sessão para sincronizar os movimentos e categorias entre os teus dispositivos.</p><label for="email">Email</label><input id="email" type="email" autocomplete="username" placeholder="teu@email.com"><label for="password">Palavra-passe</label><input id="password" type="password" autocomplete="current-password" placeholder="Palavra-passe"><button class="btn full" id="loginBtn">Iniciar sessão</button><div id="authStatus" class="status"></div></section>
+<div id="app" class="hidden">
+<header class="topline"><h1>Orçamento Familiar</h1><button id="logout" class="btn ghost small">Terminar sessão</button></header>
+<div id="cloudStatus" class="status">A ligar ao Supabase…</div>
+<div class="mnav"><button id="prev" aria-label="Mês anterior">‹</button><strong id="monthLabel"></strong><button id="next" aria-label="Mês seguinte">›</button></div>
+<section id="movTab"><div class="grid3"><div class="metric"><small>Receitas</small><b class="good" id="incomeTotal">0 €</b></div><div class="metric"><small>Despesas</small><b class="bad" id="expenseTotal">0 €</b></div><div class="metric"><small>Saldo</small><b id="balanceTotal">0 €</b></div></div>
+<div class="searchrow"><input id="search" placeholder="Pesquisar movimentos…"><select id="categoryFilter"><option value="">Todas as categorias</option></select></div><div id="movementList"></div></section>
+<section id="summaryTab" class="hidden"><div id="summary"></div></section>
+<section id="settingsTab" class="hidden"><div class="card"><h2>Preferências</h2><label for="currency">Moeda</label><select id="currency"><option value="EUR">Euro (€)</option><option value="USD">Dólar (US$)</option><option value="GBP">Libra (£)</option><option value="BRL">Real (R$)</option><option value="CHF">Franco suíço (CHF)</option></select></div>
+<div class="card"><h2>Categorias e orçamentos</h2><p class="muted">As alterações são guardadas na nuvem e sincronizadas com os outros dispositivos.</p><div id="categories"></div><h3 style="font-size:14px;margin:18px 0 4px">Adicionar categoria</h3><div class="row"><div style="flex:0 0 72px"><label for="newEmoji">Emoji</label><input id="newEmoji" maxlength="8" placeholder="🏷️"></div><div><label for="newName">Nome</label><input id="newName" maxlength="50" placeholder="Ex.: Animais"></div></div><label for="newType">Tipo</label><select id="newType"><option value="d">Despesa</option><option value="r">Receita</option></select><button id="addCategory" class="btn full">Adicionar categoria</button><div id="categoryStatus" class="status"></div></div>
+<div class="card"><h2>Exportar e cópia de segurança</h2><div class="exportgrid"><button class="btn secondary" id="exportMonth">CSV deste mês</button><button class="btn secondary" id="exportAll">CSV de todos</button><button class="btn secondary" id="exportBackup">Cópia completa (JSON)</button><button class="btn ghost" id="refresh">Sincronizar agora</button></div><p class="muted">O CSV abre no Excel. O ficheiro JSON inclui movimentos, categorias e preferências e serve como cópia de segurança.</p><div id="exportStatus" class="status"></div></div>
+<div class="card"><h2>Dados locais</h2><p class="muted">A aplicação mantém uma cópia local para ajudar a recuperar dados se a ligação falhar. Apagar movimentos é uma ação permanente na nuvem.</p><button class="btn danger full" id="clearAll">Apagar todos os movimentos</button><div id="clearStatus" class="status"></div></div></section>
+</div></main>
+<div id="movementSheet" class="overlay hidden"><div class="sheet"><div class="topline"><h2 id="sheetTitle">Novo movimento</h2><button id="closeSheet" class="btn ghost small">Fechar</button></div><div class="searchrow"><button id="typeExpense" class="btn">Despesa</button><button id="typeIncome" class="btn secondary">Receita</button></div><label for="amount">Valor (€)</label><input id="amount" inputmode="decimal" placeholder="0,00"><label for="movementCategory">Categoria</label><select id="movementCategory"></select><label for="movementDate">Data</label><input id="movementDate" type="date"><label for="note">Nota (opcional)</label><input id="note" maxlength="250" placeholder="Ex.: compras da semana"><button id="saveMovement" class="btn full">Guardar movimento</button><button id="deleteMovement" class="btn danger full hidden">Apagar movimento</button><div id="movementStatus" class="status"></div></div></div>
+<button id="fab" class="fab hidden" aria-label="Novo movimento">+</button><nav class="tabs hidden" id="tabs"><button data-tab="movTab" class="active"><span>🧾</span>Movimentos</button><button data-tab="summaryTab"><span>📊</span>Resumo</button><button data-tab="settingsTab"><span>⚙️</span>Definições</button></nav>
 <script>
-const $=id=>document.getElementById(id);
-const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const today=()=>{const d=new Date();return new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
-const DC=[['sup','🛒','Supermercado'],['cas','🏠','Casa e renda'],['con','💡','Contas (luz, água, net)'],['tra','🚗','Transportes e combustível'],['res','🍽️','Restaurantes e cafés'],['sau','🏥','Saúde'],['laz','🎬','Lazer'],['com','👕','Compras'],['edu','🎓','Educação'],['neg','🔧','Negócio'],['out','📦','Outros']].map(a=>({id:a[0],i:a[1],n:a[2],t:'d',b:0})).concat([{id:'sal',i:'💰',n:'Salário',t:'r',b:0},{id:'orc',i:'➕',n:'Outras receitas',t:'r',b:0}]);
-const PAL=['#1f6feb','#f0a63a','#12a150','#d92d20','#8b5cf6','#06b6d4','#ec4899','#84cc16','#f97316','#64748b','#14b8a6'];
-let D={movs:[],cats:DC},S={cur:'EUR',th:'auto'},mon=today().slice(0,7),tab='mov',ed=null,tp='d',fc='',DL=null,armed=null;
-try{const x=JSON.parse(localStorage.getItem('gm_data')||'null');if(x&&x.movs)D={movs:x.movs,cats:x.cats&&x.cats.length?x.cats:DC}}catch(e){}
-try{Object.assign(S,JSON.parse(localStorage.getItem('gm_set')||'{}'))}catch(e){}
-const store=()=>{try{localStorage.setItem('gm_data',JSON.stringify(D));localStorage.setItem('gm_set',JSON.stringify(S))}catch(e){}};
-const fmt=n=>n.toLocaleString('pt-PT',{style:'currency',currency:S.cur});
-const pct=n=>n.toLocaleString('pt-PT',{maximumFractionDigits:0})+'%';
-const cat=id=>D.cats.find(c=>c.id===id)||{i:'❔',n:'Sem categoria',t:'d',b:0};
-const sum=L=>L.reduce((a,x)=>a+x.v,0);
-const mkey=(y,m)=>{const d=new Date(y,m,1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')};
-function arm(b,fn){if(armed===b){armed=null;fn();return}armed=b;const o=b.textContent;b.textContent='Toque outra vez para confirmar';setTimeout(()=>{if(armed===b){armed=null;b.textContent=o}},3000)}
-function applyTheme(){const r=document.documentElement;S.th==='auto'?r.removeAttribute('data-theme'):r.setAttribute('data-theme',S.th)}
-
-function renderMov(){
-  const M=D.movs.filter(x=>x.date.startsWith(mon));
-  const r=sum(M.filter(x=>x.t==='r')),d=sum(M.filter(x=>x.t==='d'));
-  $('sr').textContent=fmt(r);$('sd').textContent=fmt(d);$('ss').textContent=fmt(r-d);$('ss').className=r-d>=0?'r':'d';
-  const opts='<option value="">Todas as categorias</option>'+D.cats.map(c=>`<option value="${c.id}">${c.i} ${esc(c.n)}</option>`).join('');
-  $('fc').innerHTML=opts;$('fc').value=fc;
-  const L=M.filter(x=>!fc||x.cat===fc).sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);
-  if(!L.length){$('lst').innerHTML='<div class="empty">Sem movimentos neste mês.<br>Toque em + para adicionar.</div>';return}
-  let h='',last='';
-  L.forEach(x=>{
-    if(x.date!==last){last=x.date;const[y,m,dd]=x.date.split('-').map(Number),gd=sum(L.filter(z=>z.date===x.date&&z.t==='d'));
-      h+=`<div class="dh"><span>${new Date(y,m-1,dd).toLocaleDateString('pt-PT',{weekday:'short',day:'numeric',month:'short'})}</span><span>${gd>0?'Gastou '+fmt(gd):''}</span></div>`}
-    const c=cat(x.cat);
-    h+=`<div class="it" data-id="${x.id}"><span class="ic">${c.i}</span><div class="tx"><b>${esc(c.n)}</b><small>${esc(x.note||'')}</small></div><b class="${x.t}">${x.t==='d'?'−':'+'}${fmt(x.v)}</b></div>`});
-  $('lst').innerHTML=h;
+// Configuração pública do Supabase. A segurança depende das políticas RLS no Supabase.
+const SUPABASE_URL='https://gydouittbuvlhgptkdkp.supabase.co';
+const SUPABASE_KEY='sb_publishable_9WysdEayiy9V5vo3ttoR-g_TCU1YpLY';
+const {createClient}=window.supabase;const db=createClient(SUPABASE_URL,SUPABASE_KEY);
+const $=id=>document.getElementById(id);const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const today=()=>{const d=new Date();return new Date(d-d.getTimezoneOffset()*60000).toISOString().slice(0,10)};const monthKey=(y,m)=>{const d=new Date(y,m,1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')};
+const DEFAULT_CATS=[['sup','🛒','Supermercado','d'],['cas','🏠','Casa e renda','d'],['con','💡','Contas (luz, água, net)','d'],['tra','🚗','Transportes e combustível','d'],['res','🍽️','Restaurantes e cafés','d'],['sau','🏥','Saúde','d'],['laz','🎬','Lazer','d'],['com','👕','Compras','d'],['edu','🎓','Educação','d'],['neg','🔧','Negócio','d'],['out','📦','Outros','d'],['sal','💰','Salário','r'],['orc','➕','Outras receitas','r']].map(([id,i,n,t])=>({id,i,n,t,b:0}));
+let D={movs:[],cats:DEFAULT_CATS.map(c=>({...c}))},S={cur:'EUR'},month=today().slice(0,7),filterCat='',searchTerm='',tab='movTab',editing=null,type='d',user=null,channel=null,loading=false;
+try{const x=JSON.parse(localStorage.getItem('gm_data')||'null');if(x&&Array.isArray(x.movs)){D.movs=x.movs; if(Array.isArray(x.cats)&&x.cats.length)D.cats=x.cats.map(normalizeCat)}}catch(e){}try{Object.assign(S,JSON.parse(localStorage.getItem('gm_set')||'{}'))}catch(e){}
+function normalizeCat(c){return {id:String(c.id),i:c.i||c.emoji||'🏷️',n:c.n||c.nome||'Categoria',t:c.t||c.tipo||'d',b:Number(c.b??c.orcamento??0)||0}}
+function persistLocal(){try{localStorage.setItem('gm_data',JSON.stringify(D));localStorage.setItem('gm_set',JSON.stringify(S))}catch(e){}}
+const sum=a=>a.reduce((n,x)=>n+Number(x.v||0),0);const fmt=n=>Number(n||0).toLocaleString('pt-PT',{style:'currency',currency:S.cur||'EUR'});const pct=n=>Math.round(n||0)+'%';const category=id=>D.cats.find(c=>String(c.id)===String(id))||{i:'❔',n:'Sem categoria',t:'d',b:0};
+function status(id,msg,kind=''){const el=$(id);if(el){el.textContent=msg;el.className='status '+kind}}
+function setCloud(msg,kind=''){status('cloudStatus',msg,kind)}
+function download(name,content,mime){const blob=new Blob([content],{type:mime});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)}
+function movementFromRow(r){return {id:r.id,t:r.tipo==='r'?'r':'d',v:Number(r.valor)||0,cat:String(r.categoria||''),date:r.data,note:r.notas||''}}
+function rowFromMovement(m){return {user_id:user.id,data:m.date,descricao:category(m.cat).n,categoria:String(m.cat),valor:Number(m.v),tipo:m.t,notas:m.note||''}}
+function categoryFromRow(r){return {id:String(r.id),i:r.emoji||'🏷️',n:r.nome||'Categoria',t:r.tipo==='r'?'r':'d',b:Number(r.orcamento)||0}}
+function rowFromCategory(c){return {id:String(c.id),user_id:user.id,nome:c.n,emoji:c.i||'🏷️',tipo:c.t,orcamento:Number(c.b)||0,updated_at:new Date().toISOString()}}
+async function getRows(table){const {data,error}=await db.from(table).select('*');if(error)throw error;return data||[]}
+async function loadCloud({seedLocal=true}={}){
+ if(!user)return;setCloud('A sincronizar…');
+ const [moveRows,catRows]=await Promise.all([getRows('gastos'),getRows('categorias')]);
+ // Importa dados locais apenas quando a tabela correspondente está vazia; nunca substitui dados existentes na nuvem.
+ if(moveRows.length===0&&seedLocal&&D.movs.length){const rows=D.movs.map(rowFromMovement);const {error}=await db.from('gastos').insert(rows);if(error)throw error;}
+ if(catRows.length===0&&seedLocal&&D.cats.length){const rows=D.cats.map(rowFromCategory);const {error}=await db.from('categorias').upsert(rows,{onConflict:'user_id,id'});if(error)throw error;}
+ const [freshMoves,freshCats]=await Promise.all([getRows('gastos'),getRows('categorias')]);
+ D.movs=freshMoves.map(movementFromRow);
+ // Depois da primeira migração, a nuvem passa a ser a fonte de verdade, mesmo se a tabela estiver vazia.
+ D.cats=freshCats.length?freshCats.map(categoryFromRow):(seedLocal?D.cats:[]);
+ persistLocal();renderAll();setCloud('Sincronizado · '+new Date().toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'}),'ok');
 }
-
-function renderRes(){
-  const ds=D.movs.filter(x=>x.t==='d'&&x.date.startsWith(mon)),tot=sum(ds);
-  const by={};ds.forEach(x=>by[x.cat]=(by[x.cat]||0)+x.v);
-  const rows=Object.entries(by).sort((a,b)=>b[1]-a[1]);
-  let h='<div class="card"><h2>Para onde vai o dinheiro</h2>';
-  if(!rows.length)h+='<div class="empty">Sem despesas neste mês.</div>';
-  rows.forEach(([id,v],k)=>{const c=cat(id),p=v/tot*100;
-    const bud=c.b>0?`<div class="bd ${v>c.b?'over':''}">Orçamento ${fmt(c.b)} · ${pct(v/c.b*100)} usado${v>c.b?' · excedido em '+fmt(v-c.b):''}</div>`:'';
-    h+=`<div class="cb"><div class="ch"><span>${c.i} ${esc(c.n)}</span><b>${fmt(v)} <small>${pct(p)}</small></b></div><div class="bar"><span style="width:${p}%;background:${PAL[k%PAL.length]}"></span></div>${bud}</div>`});
-  h+='</div>';
-  const[y,m]=mon.split('-').map(Number),nd=new Date(y,m,0).getDate(),day=Array(nd).fill(0);
-  ds.forEach(x=>day[+x.date.slice(8,10)-1]+=x.v);
-  const mx=Math.max(...day,1),bw=620/nd;let svg='<svg viewBox="0 0 620 150">';
-  day.forEach((v,i)=>{const hh=v/mx*110;svg+=`<rect x="${i*bw+1}" y="${120-hh}" width="${Math.max(bw-2,1)}" height="${hh}" rx="2" fill="var(--ac)"/>`;if(i===0||(i+1)%5===0)svg+=`<text x="${i*bw+bw/2}" y="140" text-anchor="middle" font-size="11" fill="var(--mu)">${i+1}</text>`});
-  h+=`<div class="card"><h2>Gastos dia a dia</h2>${svg}</svg></div>`;
-  const now=today(),el=mon===now.slice(0,7)?+now.slice(8,10):nd,ptot=sum(D.movs.filter(x=>x.t==='d'&&x.date.startsWith(mkey(y,m-2)))),big=ds.slice().sort((a,b)=>b.v-a.v)[0];
-  h+=`<div class="card"><h2>Destaques</h2><div class="kv"><div><small>Média por dia</small><b>${fmt(tot/el)}</b></div><div><small>Face ao mês anterior</small><b>${ptot>0?(tot>=ptot?'+':'−')+pct(Math.abs(tot-ptot)/ptot*100):'–'}</b></div><div style="grid-column:1/-1"><small>Maior despesa</small><b>${big?esc(cat(big.cat).n)+(big.note?' · '+esc(big.note):'')+' — '+fmt(big.v):'–'}</b></div></div></div>`;
-  $('res').innerHTML=h;
-}
-
-function renderSet(){
-  $('cl').innerHTML=D.cats.map(c=>`<div class="cr"><span>${c.i} ${esc(c.n)}${c.t==='r'?' <small style="color:var(--mu)">(receita)</small>':''}</span>${c.t==='d'?`<input type="text" inputmode="decimal" data-b="${c.id}" value="${c.b||''}" placeholder="Orçamento">`:''}<button data-dc="${c.id}" aria-label="Apagar">🗑</button></div>`).join('');
-}
-function render(){
-  const[y,m]=mon.split('-').map(Number);
-  $('mlab').textContent=new Date(y,m-1,1).toLocaleDateString('pt-PT',{month:'long',year:'numeric'});
-  renderMov();renderRes();renderSet();
-}
-function show(t){
-  tab=t;['mov','res','set'].forEach(k=>{$('t-'+k).classList.toggle('hide',k!==t);$('n-'+k).classList.toggle('on',k===t)});
-  $('mnav').classList.toggle('hide',t==='set');$('fab').classList.toggle('hide',t==='set');scrollTo(0,0);
-}
-
-// folha de movimento
-function fillCats(sel){const L=D.cats.filter(c=>c.t===tp);$('ct').innerHTML=L.map(c=>`<option value="${c.id}">${c.i} ${esc(c.n)}</option>`).join('');if(sel&&L.some(c=>c.id===sel))$('ct').value=sel}
-function setTp(t,sel){tp=t;$('tpd').classList.toggle('on',t==='d');$('tpr').classList.toggle('on',t==='r');fillCats(sel)}
-function openSheet(id){
-  ed=id?D.movs.find(x=>x.id===id):null;
-  $('sht').textContent=ed?'Editar movimento':'Novo movimento';
-  $('v').value=ed?String(ed.v).replace('.',','):'';$('dt').value=ed?ed.date:today();$('nt').value=ed?ed.note:'';
-  setTp(ed?ed.t:'d',ed?ed.cat:null);
-  $('del').classList.toggle('hide',!ed);$('sh').classList.remove('hide');
-  if(!ed)setTimeout(()=>$('v').focus(),50);
-}
-const closeSheet=()=>$('sh').classList.add('hide');
-$('tpd').onclick=()=>setTp('d');$('tpr').onclick=()=>setTp('r');
-$('fab').onclick=()=>openSheet();$('cx').onclick=closeSheet;
-$('sh').addEventListener('click',e=>{if(e.target===$('sh'))closeSheet()});
-$('sv').onclick=()=>{
-  const v=parseFloat($('v').value.replace(',','.'));if(!(v>0)){$('v').focus();return}
-  const o={t:tp,v:Math.round(v*100)/100,cat:$('ct').value,date:$('dt').value||today(),note:$('nt').value.trim()};
-  if(ed)Object.assign(ed,o);else D.movs.push({id:Date.now(),...o});
-  mon=o.date.slice(0,7);fc='';store();closeSheet();render();
-};
-$('del').onclick=()=>arm($('del'),()=>{D.movs=D.movs.filter(x=>x!==ed);store();closeSheet();render()});
-$('lst').addEventListener('click',e=>{const it=e.target.closest('[data-id]');if(it)openSheet(it.dataset.id)});
-$('fc').onchange=e=>{fc=e.target.value;renderMov()};
-
-// navegação
-const shift=d=>{const[y,m]=mon.split('-').map(Number);mon=mkey(y,m-1+d);fc='';render()};
-$('pv').onclick=()=>shift(-1);$('nx').onclick=()=>shift(1);
-$('n-mov').onclick=()=>show('mov');$('n-res').onclick=()=>show('res');$('n-set').onclick=()=>show('set');
-
-// definições
-$('cl').addEventListener('change',e=>{const b=e.target.dataset.b;if(!b)return;const c=D.cats.find(c=>c.id===b);c.b=Math.max(0,parseFloat(e.target.value.replace(',','.'))||0);store();renderRes()});
-$('cl').addEventListener('click',e=>{const b=e.target.closest('[data-dc]');if(b)arm(b,()=>{D.cats=D.cats.filter(c=>c.id!==b.dataset.dc);store();render()})});
-$('nadd').onclick=()=>{const n=$('nn').value.trim();if(!n)return;D.cats.push({id:'c'+Date.now(),i:$('ni').value.trim()||'🏷️',n,t:$('nt2').value,b:0});$('nn').value='';$('ni').value='';store();render()};
-$('cur').onchange=e=>{S.cur=e.target.value;store();render()};
-$('th').onchange=e=>{S.th=e.target.value;store();applyTheme()};
-$('clr').onclick=()=>arm($('clr'),()=>{D.movs=[];store();render()});
-
-// exportar
-function csv(L){let s='\ufeffData;Tipo;Categoria;Valor;Nota\n';L.slice().sort((a,b)=>a.date.localeCompare(b.date)).forEach(x=>{s+=[x.date,x.t==='d'?'Despesa':'Receita',cat(x.cat).n,x.v.toFixed(2).replace('.',','),'"'+(x.note||'').replace(/"/g,'""')+'"'].join(';')+'\n'});return s}
-async function exp(all){
-  $('stat').textContent='';
-  try{await DL.save({filename:all?'movimentos.csv':'movimentos-'+mon+'.csv',data:csv(all?D.movs:D.movs.filter(x=>x.date.startsWith(mon)))});$('stat').textContent='Ficheiro guardado ✓'}
-  catch(e){$('stat').textContent=e&&e.code==='declined'?'':'Não foi possível exportar neste momento.'}
-}
-$('e1').onclick=()=>exp(false);$('e2').onclick=()=>exp(true);
-$('exc').classList.add('hide');
-(async()=>{try{DL=await claude.use('downloads')}catch(e){}if(DL)$('exc').classList.remove('hide')})();
-
-$('cur').value=S.cur;$('th').value=S.th;applyTheme();render();
-</script>
-
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-  const SUPABASE_URL = "https://gydouittbuvlhgptkdkp.supabase.co";
-  const SUPABASE_KEY = "sb_publishable_9WysdEayiy9V5vo3ttoR-g_TCU1YpLY";
-
-  const supabaseClient = window.supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_KEY
-  );
-</script>
-  
-<script>
-(() => {
-  const status = document.getElementById('authStatus');
-  const form = document.getElementById('authForm');
-  const logout = document.getElementById('authLogout');
-  const login = document.getElementById('authLogin');
-  const email = document.getElementById('authEmail');
-  const password = document.getElementById('authPassword');
-
-  let currentUser = null;
-  let channel = null;
-  let busy = false;
-
-  function message(text) {
-    status.textContent = text;
-  }
-
-  function authUI(signedIn) {
-    form.classList.toggle('hide', signedIn);
-    logout.classList.toggle('hide', !signedIn);
-  }
-
-  function fromRow(row) {
-    return {
-      id: row.id,
-      t: row.tipo,
-      v: Number(row.valor),
-      cat: row.categoria || '',
-      date: row.data,
-      note: row.notas || ''
-    };
-  }
-
-  function toRow(move) {
-    return {
-      user_id: currentUser.id,
-      data: move.date,
-      descricao: cat(move.cat).n,
-      categoria: move.cat,
-      valor: move.v,
-      tipo: move.t,
-      notas: move.note || ''
-    };
-  }
-
-  async function getCloudMoves() {
-    const { data, error } = await supabaseClient
-      .from('gastos')
-      .select('*')
-      .order('data', { ascending: false });
-
-    if (error) throw error;
-    return data || [];
-  }
-
-  async function loadCloud() {
-    if (!currentUser || busy) return;
-    busy = true;
-    message('A carregar os movimentos…');
-
-    try {
-      let rows = await getCloudMoves();
-
-      // Importar os movimentos locais apenas se a conta
-      // ainda não tiver movimentos guardados na nuvem.
-      if (rows.length === 0 && D.movs.length > 0) {
-        const localMoves = D.movs.map(m => toRow(m));
-        const { error } = await supabaseClient
-          .from('gastos')
-          .insert(localMoves);
-
-        if (error) throw error;
-        rows = await getCloudMoves();
-      }
-
-      D.movs = rows.map(fromRow);
-      store();
-      render();
-
-      message('Sincronizado com a tua conta.');
-    } catch (error) {
-      console.error(error);
-      message('Erro ao carregar dados: ' + error.message);
-    } finally {
-      busy = false;
-    }
-  }
-
-  login.onclick = async () => {
-    login.disabled = true;
-    message('A iniciar sessão…');
-
-    try {
-      const { data, error } = await supabaseClient.auth.signInWithPassword({
-        email: email.value.trim(),
-        password: password.value
-      });
-
-      if (error) throw error;
-      currentUser = data.user;
-      authUI(true);
-      await loadCloud();
-      password.value = '';
-      setupRealtime();
-    } catch (error) {
-      message('Não foi possível iniciar sessão: ' + error.message);
-    } finally {
-      login.disabled = false;
-    }
-  };
-
-  logout.onclick = async () => {
-    if (channel) {
-      await supabaseClient.removeChannel(channel);
-      channel = null;
-    }
-
-    const { error } = await supabaseClient.auth.signOut();
-
-    if (error) {
-      message('Erro ao terminar sessão: ' + error.message);
-      return;
-    }
-
-    currentUser = null;
-    D.movs = [];
-    store();
-    render();
-    authUI(false);
-    message('Sessão terminada.');
-  };
-
-  async function saveMove(move) {
-    const row = toRow(move);
-    let result;
-
-    if (typeof move.id === 'string') {
-      result = await supabaseClient
-        .from('gastos')
-        .update(row)
-        .eq('id', move.id)
-        .select()
-        .single();
-    } else {
-      result = await supabaseClient
-        .from('gastos')
-        .insert(row)
-        .select()
-        .single();
-    }
-
-    if (result.error) throw result.error;
-    return fromRow(result.data);
-  }
-
-  // Substitui a gravação local pelo armazenamento na nuvem.
-  $('sv').onclick = async () => {
-    if (!currentUser) {
-      message('Inicia sessão antes de guardar movimentos.');
-      return;
-    }
-
-    const v = parseFloat($('v').value.replace(',', '.'));
-
-    if (!(v > 0)) {
-      $('v').focus();
-      return;
-    }
-
-    if (busy) return;
-    busy = true;
-    $('sv').disabled = true;
-
-    try {
-      const move = {
-        id: ed ? ed.id : null,
-        t: tp,
-        v: Math.round(v * 100) / 100,
-        cat: $('ct').value,
-        date: $('dt').value || today(),
-        note: $('nt').value.trim()
-      };
-
-      const saved = await saveMove(move);
-
-      if (ed) {
-        D.movs = D.movs.map(m => m.id === ed.id ? saved : m);
-      } else {
-        D.movs.push(saved);
-      }
-
-      mon = saved.date.slice(0, 7);
-      fc = '';
-      store();
-      closeSheet();
-      render();
-      message('Movimento guardado na nuvem.');
-    } catch (error) {
-      console.error(error);
-      message('Erro ao guardar: ' + error.message);
-    } finally {
-      busy = false;
-      $('sv').disabled = false;
-    }
-  };
-
-  // Apagar também na base de dados.
-  $('del').onclick = async () => {
-    if (!ed || !currentUser || busy) return;
-
-    arm($('del'), async () => {
-      busy = true;
-      $('del').disabled = true;
-
-      try {
-        if (typeof ed.id === 'string') {
-          const { error } = await supabaseClient
-            .from('gastos')
-            .delete()
-            .eq('id', ed.id);
-
-          if (error) throw error;
-        }
-
-        D.movs = D.movs.filter(m => m.id !== ed.id);
-        store();
-        closeSheet();
-        render();
-        message('Movimento apagado.');
-      } catch (error) {
-        message('Erro ao apagar: ' + error.message);
-      } finally {
-        busy = false;
-        $('del').disabled = false;
-      }
-    });
-  };
-
-  // Atualizar os dados quando outro dispositivo os altera.
-  function setupRealtime() {
-    if (channel) supabaseClient.removeChannel(channel);
-
-    channel = supabaseClient
-      .channel('gastos-sincronizados')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'gastos',
-        filter: 'user_id=eq.' + currentUser.id
-      }, () => {
-        if (!busy) loadCloud();
-      })
-      .subscribe();
-  }
-
-  // Recuperar a sessão se já existir.
-  (async () => {
-    try {
-      const { data, error } = await supabaseClient.auth.getSession();
-      if (error) throw error;
-
-      if (data.session) {
-        currentUser = data.session.user;
-        authUI(true);
-        await loadCloud();
-        setupRealtime();
-      } else {
-        authUI(false);
-        message('Inicia sessão para sincronizar os teus movimentos.');
-      }
-    } catch (error) {
-      console.error(error);
-      message('Erro de ligação: ' + error.message);
-    }
-  })();
-})();
-</script>
-</body>
-</html>
-
-  
-
-</body>
-</html>
+async function saveMovement(){if(!user)throw Error('Inicia sessão primeiro.');const payload=rowFromMovement(editing?{...editing,t:type,v:Number($('amount').value.replace(',','.')),cat:$('movementCategory').value,date:$('movementDate').value||today(),note:$('note').value.trim()}:{t:type,v:Number($('amount').value.replace(',','.')),cat:$('movementCategory').value,date:$('movementDate').value||today(),note:$('note').value.trim()});if(!(payload.valor>0)||!payload.data||!payload.categoria)throw Error('Preenche o valor, a data e a categoria.');let q;if(editing){q=db.from('gastos').update(payload).eq('id',editing.id).eq('user_id',user.id)}else{q=db.from('gastos').insert(payload)}const {error}=await q;if(error)throw error;await loadCloud({seedLocal:false});closeMovementSheet()}
+async function deleteMovement(){if(!editing)return;if(!confirm('Apagar este movimento permanentemente?'))return;const {error}=await db.from('gastos').delete().eq('id',editing.id).eq('user_id',user.id);if(error)throw error;await loadCloud({seedLocal:false});closeMovementSheet()}
+async function saveCategory(id,row){const c=D.cats.find(x=>String(x.id)===String(id));if(!c)return;const name=row.querySelector('[data-name]').value.trim(),emoji=row.querySelector('[data-emoji]').value.trim()||'🏷️',budget=Math.max(0,Number(row.querySelector('[data-budget]').value.replace(',','.'))||0);if(!name){status('categoryStatus','O nome da categoria é obrigatório.','error');return}const updated={...c,n:name,i:emoji,b:budget};const {error}=await db.from('categorias').upsert(rowFromCategory(updated),{onConflict:'user_id,id'});if(error)throw error;D.cats=D.cats.map(x=>String(x.id)===String(id)?updated:x);persistLocal();renderAll();status('categoryStatus','Categoria guardada e sincronizada.','ok')}
+async function addCategory(){const n=$('newName').value.trim();if(!n){status('categoryStatus','Indica o nome da categoria.','error');return}const c={id:'c'+(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)),i:$('newEmoji').value.trim()||'🏷️',n,t:$('newType').value,b:0};const {error}=await db.from('categorias').insert(rowFromCategory(c));if(error)throw error;D.cats.push(c);persistLocal();$('newName').value='';$('newEmoji').value='';renderAll();status('categoryStatus','Categoria adicionada e sincronizada.','ok')}
+async function deleteCategory(id){if(D.movs.some(m=>String(m.cat)===String(id))){if(!confirm('Esta categoria está associada a movimentos. Se a apagares, esses movimentos continuarão guardados, mas passarão a aparecer como “Sem categoria”. Continuar?'))return}else if(!confirm('Apagar esta categoria?'))return;const {error}=await db.from('categorias').delete().eq('id',String(id)).eq('user_id',user.id);if(error)throw error;D.cats=D.cats.filter(c=>String(c.id)!==String(id));persistLocal();renderAll();status('categoryStatus','Categoria apagada.','ok')}
+function renderMovements(){const list=D.movs.filter(m=>m.date&&m.date.startsWith(month)&&(!filterCat||String(m.cat)===filterCat)&&(!searchTerm||(`${category(m.cat).n} ${m.note||''} ${m.v} ${m.date}`).toLocaleLowerCase('pt-PT').includes(searchTerm.toLocaleLowerCase('pt-PT')))).sort((a,b)=>b.date.localeCompare(a.date)||String(b.id).localeCompare(String(a.id)));const monthMoves=D.movs.filter(m=>m.date&&m.date.startsWith(month));const income=sum(monthMoves.filter(m=>m.t==='r')),expense=sum(monthMoves.filter(m=>m.t==='d'));$('incomeTotal').textContent=fmt(income);$('expenseTotal').textContent=fmt(expense);$('balanceTotal').textContent=fmt(income-expense);$('balanceTotal').className=income-expense>=0?'good':'bad';$('categoryFilter').innerHTML='<option value="">Todas as categorias</option>'+D.cats.map(c=>`<option value="${esc(c.id)}">${esc(c.i)} ${esc(c.n)}</option>`).join('');$('categoryFilter').value=filterCat;
+ if(!list.length){$('movementList').innerHTML='<div class="empty">Não foram encontrados movimentos.<br>Carrega em + para adicionar.</div>';return}let html='',last='';for(const m of list){if(m.date!==last){last=m.date;const dayExpense=sum(list.filter(x=>x.date===last&&x.t==='d'));html+=`<div class="dayhead"><span>${new Date(last+'T12:00:00').toLocaleDateString('pt-PT',{weekday:'short',day:'numeric',month:'short'})}</span><span>${dayExpense?`Despesas ${fmt(dayExpense)}`:''}</span></div>`}const c=category(m.cat);html+=`<div class="movement" data-movement="${esc(m.id)}"><span class="emoji">${esc(c.i)}</span><div class="mtext"><b>${esc(c.n)}</b><small>${esc(m.note||'Sem nota')}</small></div><b class="${m.t==='r'?'good':'bad'}">${m.t==='r'?'+':'−'}${fmt(m.v)}</b></div>`}$('movementList').innerHTML=html}
+function renderSummary(){const ds=D.movs.filter(m=>m.t==='d'&&m.date&&m.date.startsWith(month)),tot=sum(ds),by={};ds.forEach(m=>by[m.cat]=(by[m.cat]||0)+m.v);const rows=Object.entries(by).sort((a,b)=>b[1]-a[1]);let html='<div class="card"><h2>Despesas por categoria</h2>';if(!rows.length)html+='<div class="empty">Ainda não há despesas neste mês.</div>';for(const [id,v] of rows){const c=category(id),p=tot?v/tot*100:0;html+=`<div style="margin:14px 0"><div class="topline"><span>${esc(c.i)} ${esc(c.n)}</span><b>${fmt(v)} <span class="muted">${pct(p)}</span></b></div><div class="bar"><span style="width:${Math.min(100,p)}%"></span></div>${c.b>0?`<div class="muted" style="margin-top:5px">Orçamento ${fmt(c.b)} · ${pct(v/c.b*100)} usado${v>c.b?` · acima ${fmt(v-c.b)}`:''}</div>`:''}</div>`}html+='</div>';
+ const [y,mo]=month.split('-').map(Number),days=new Date(y,mo,0).getDate(),daily=Array(days).fill(0);ds.forEach(m=>daily[Number(m.date.slice(8,10))-1]+=m.v);const max=Math.max(1,...daily),bw=620/days;let svg='<svg class="chart" viewBox="0 0 620 145" role="img" aria-label="Despesas por dia">';daily.forEach((v,i)=>{const h=v/max*100;svg+=`<rect x="${i*bw+1}" y="${112-h}" width="${Math.max(1,bw-2)}" height="${h}" rx="2" fill="#246bfe"/>`;if(i===0||(i+1)%5===0)svg+=`<text x="${i*bw+bw/2}" y="135" text-anchor="middle" font-size="11" fill="currentColor">${i+1}</text>`});svg+='</svg>';html+=`<div class="card"><h2>Despesas ao longo do mês</h2>${svg}</div>`;
+ const income=sum(D.movs.filter(m=>m.t==='r'&&m.date&&m.date.startsWith(month))),prev=monthKey(y,mo-2),prevExpense=sum(D.movs.filter(m=>m.t==='d'&&m.date&&m.date.startsWith(prev))),elapsed=month===today().slice(0,7)?Number(today().slice(8,10)):days,big=ds.slice().sort((a,b)=>b.v-a.v)[0];html+=`<div class="card"><h2>Indicadores</h2><div class="grid3"><div class="metric"><small>Poupança do mês</small><b class="${income-expense>=0?'good':'bad'}">${fmt(income-expense)}</b></div><div class="metric"><small>Taxa de poupança</small><b>${income>0?pct((income-expense)/income*100):'—'}</b></div><div class="metric"><small>Média diária</small><b>${fmt(tot/Math.max(1,elapsed))}</b></div></div><p class="muted">Face ao mês anterior: ${prevExpense?`${tot>prevExpense?'+':'−'}${pct(Math.abs(tot-prevExpense)/prevExpense*100)} em despesas`:'sem dados do mês anterior'}.</p><p><b>Maior despesa:</b> ${big?`${esc(category(big.cat).n)}${big.note?' — '+esc(big.note):''}, ${fmt(big.v)}`:'—'}</p></div>`;$('summary').innerHTML=html}
+function renderCategories(){ $('categories').innerHTML=D.cats.map(c=>`<div class="catrow" data-catrow="${esc(c.id)}"><div class="catfields"><div><label>Emoji</label><input data-emoji value="${esc(c.i)}" maxlength="8" aria-label="Emoji"></div><div><label>Nome</label><input data-name value="${esc(c.n)}" maxlength="50" aria-label="Nome da categoria"></div><div><label>Tipo</label><input value="${c.t==='d'?'Despesa':'Receita'}" disabled aria-label="Tipo da categoria"></div></div><div class="catbottom"><div><label>Orçamento mensal (€)</label><input data-budget inputmode="decimal" value="${c.b||''}" placeholder="Sem orçamento"></div><button class="btn small secondary" data-savecat="${esc(c.id)}">Guardar</button><button class="btn small danger" data-deletecat="${esc(c.id)}" aria-label="Apagar categoria">Apagar</button></div></div>`).join('')}
+function renderAll(){if(!user)return;const [y,m]=month.split('-').map(Number);$('monthLabel').textContent=new Date(y,m-1,1).toLocaleDateString('pt-PT',{month:'long',year:'numeric'});renderMovements();renderSummary();renderCategories();$('currency').value=S.cur||'EUR'}
+function showTab(id){tab=id;for(const t of ['movTab','summaryTab','settingsTab'])$(t).classList.toggle('hidden',t!==id);document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===id));$('fab').classList.toggle('hidden',id!=='movTab');window.scrollTo(0,0)}
+function fillMovementCategories(sel){const cats=D.cats.filter(c=>c.t===type);$('movementCategory').innerHTML=cats.map(c=>`<option value="${esc(c.id)}">${esc(c.i)} ${esc(c.n)}</option>`).join('');if(sel&&cats.some(c=>String(c.id)===String(sel)))$('movementCategory').value=String(sel)}
+function setMovementType(t,sel){type=t;$('typeExpense').className='btn'+(t==='d'?'':' secondary');$('typeIncome').className='btn'+(t==='r'?'':' secondary');fillMovementCategories(sel)}
+function openMovementSheet(m=null){editing=m;$('sheetTitle').textContent=m?'Editar movimento':'Novo movimento';$('amount').value=m?String(m.v).replace('.',','):'';$('movementDate').value=m?.date||today();$('note').value=m?.note||'';setMovementType(m?.t||'d',m?.cat);$('deleteMovement').classList.toggle('hidden',!m);status('movementStatus','');$('movementSheet').classList.remove('hidden')}
+function closeMovementSheet(){$('movementSheet').classList.add('hidden');editing=null}
+function csvEscape(v){return '"'+String(v??'').replace(/"/g,'""')+'"'}function makeCsv(list){let out='\ufeffData;Tipo;Categoria;Valor;Nota\r\n';for(const m of list.slice().sort((a,b)=>a.date.localeCompare(b.date))){out+=[m.date,m.t==='d'?'Despesa':'Receita',category(m.cat).n,Number(m.v).toFixed(2).replace('.',','),m.note||''].map(csvEscape).join(';')+'\r\n'}return out}
+async function doExport(which){try{const list=which==='month'?D.movs.filter(m=>m.date&&m.date.startsWith(month)):D.movs;download(which==='month'?`movimentos-${month}.csv`:'movimentos-todos.csv',makeCsv(list),'text/csv;charset=utf-8');status('exportStatus',`Exportação preparada: ${list.length} movimentos.`,'ok')}catch(e){status('exportStatus',e.message||'Não foi possível exportar.','error')}}
+function startRealtime(){if(channel){db.removeChannel(channel);channel=null}channel=db.channel('gastos-categorias-'+user.id).on('postgres_changes',{event:'*',schema:'public',table:'gastos',filter:'user_id=eq.'+user.id},()=>{if(!loading)loadCloud({seedLocal:false}).catch(e=>setCloud('Erro de sincronização: '+e.message,'error'))}).on('postgres_changes',{event:'*',schema:'public',table:'categorias',filter:'user_id=eq.'+user.id},()=>{if(!loading)loadCloud({seedLocal:false}).catch(e=>setCloud('Erro de sincronização: '+e.message,'error'))}).subscribe();}
+async function enterApp(u){user=u;$('login').classList.add('hidden');$('app').classList.remove('hidden');$('tabs').classList.remove('hidden');$('fab').classList.remove('hidden');loading=true;try{await loadCloud({seedLocal:true});startRealtime()}catch(e){setCloud('Não foi possível sincronizar: '+e.message,'error')}finally{loading=false;showTab('movTab')}}
+$('loginBtn').onclick=async()=>{status('authStatus','A iniciar sessão…');const {data,error}=await db.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});if(error){status('authStatus',error.message,'error');return}await enterApp(data.user)};
+$('logout').onclick=async()=>{if(channel){await db.removeChannel(channel);channel=null}await db.auth.signOut();user=null;$('app').classList.add('hidden');$('tabs').classList.add('hidden');$('fab').classList.add('hidden');$('login').classList.remove('hidden')};
+$('prev').onclick=()=>{const[y,m]=month.split('-').map(Number);month=monthKey(y,m-2);renderAll()};$('next').onclick=()=>{const[y,m]=month.split('-').map(Number);month=monthKey(y,m);renderAll()};$('search').oninput=e=>{searchTerm=e.target.value;renderMovements()};$('categoryFilter').onchange=e=>{filterCat=e.target.value;renderMovements()};$('currency').onchange=e=>{S.cur=e.target.value;persistLocal();renderAll()};document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));$('fab').onclick=()=>openMovementSheet();$('closeSheet').onclick=closeMovementSheet;$('movementSheet').addEventListener('click',e=>{if(e.target===$('movementSheet'))closeMovementSheet()});$('typeExpense').onclick=()=>setMovementType('d');$('typeIncome').onclick=()=>setMovementType('r');$('saveMovement').onclick=async()=>{try{status('movementStatus','A guardar…');await saveMovement()}catch(e){status('movementStatus',e.message||'Erro ao guardar movimento.','error')}};$('deleteMovement').onclick=async()=>{try{await deleteMovement()}catch(e){status('movementStatus',e.message||'Erro ao apagar movimento.','error')}};$('movementList').addEventListener('click',e=>{const el=e.target.closest('[data-movement]');if(el){const m=D.movs.find(x=>String(x.id)===el.dataset.movement);if(m)openMovementSheet(m)}});
+$('categories').addEventListener('click',async e=>{const save=e.target.closest('[data-savecat]'),del=e.target.closest('[data-deletecat]');try{if(save){status('categoryStatus','A guardar…');await saveCategory(save.dataset.savecat,save.closest('[data-catrow]'))}else if(del){await deleteCategory(del.dataset.deletecat)}}catch(err){status('categoryStatus',err.message||'Não foi possível alterar a categoria.','error')}});$('addCategory').onclick=async()=>{try{status('categoryStatus','A adicionar…');await addCategory()}catch(e){status('categoryStatus',e.message||'Não foi possível adicionar categoria.','error')}};$('exportMonth').onclick=()=>doExport('month');$('exportAll').onclick=()=>doExport('all');$('exportBackup').onclick=()=>{download('orcamento-familiar-backup-'+today()+'.json',JSON.stringify({exportadoEm:new Date().toISOString(),movimentos:D.movs,categorias:D.cats,preferencias:S},null,2),'application/json;charset=utf-8');status('exportStatus','Cópia de segurança JSON criada.','ok')};$('refresh').onclick=async()=>{try{await loadCloud({seedLocal:false});status('exportStatus','Sincronização concluída.','ok')}catch(e){status('exportStatus',e.message||'Erro de sincronização.','error')}};$('clearAll').onclick=async()=>{if(!confirm('Tens a certeza de que queres apagar TODOS os movimentos da nuvem? Esta ação não pode ser anulada.'))return;if(!confirm('Confirma novamente: apagar permanentemente todos os teus movimentos?'))return;try{const {error}=await db.from('gastos').delete().eq('user_id',user.id);if(error)throw error;D.movs=[];persistLocal();renderAll();status('clearStatus','Todos os movimentos foram apagados.','ok')}catch(e){status('clearStatus',e.message||'Não foi possível apagar.','error')}};
+(async()=>{const {data:{session},error}=await db.auth.getSession();if(error){$('login').classList.remove('hidden');status('authStatus',error.message,'error');return}if(session?.user)await enterApp(session.user);else $('login').classList.remove('hidden');})();
+</script></body></html>
