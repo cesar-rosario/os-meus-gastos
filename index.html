@@ -1,114 +1,102 @@
-
 <!DOCTYPE html>
 <html lang="pt-PT">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1769e0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Gastos">
 <title>Os Meus Gastos</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>
-:root{--bg:#f3f5f9;--card:#fff;--tx:#172033;--muted:#687386;--blue:#1769e0;--line:#e3e8f0;--red:#c0392b;--green:#14804a;--shadow:0 5px 22px #18274b0b}
+:root{--bg:#f3f5f9;--card:#fff;--tx:#172033;--muted:#687386;--blue:#1769e0;--line:#e3e8f0;--red:#c0392b;--green:#14804a;--soft:#eaf1ff;--softtx:#174b9b;--inp:#fff}
+@media(prefers-color-scheme:dark){:root{--bg:#0f1420;--card:#192031;--tx:#e8ecf5;--muted:#9aa5b8;--blue:#4a8ff0;--line:#2a3349;--red:#ef7b6e;--green:#4cc88a;--soft:#22304d;--softtx:#a9c8ff;--inp:#121827}}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
 button,input,select,textarea{font:inherit}
-button{border:0;border-radius:10px;padding:10px 14px;background:var(--blue);color:white;font-weight:650;cursor:pointer}
-button:disabled{opacity:.5;cursor:wait}
-button.secondary{background:#eaf1ff;color:#174b9b}
-button.danger{background:#fff0ef;color:var(--red)}
+button{border:0;border-radius:10px;padding:10px 14px;background:var(--blue);color:#fff;font-weight:650;cursor:pointer}
+button:disabled{opacity:.5}
+button.secondary{background:var(--soft);color:var(--softtx)}
+button.danger{background:transparent;color:var(--red)}
 button.ghost{background:transparent;color:var(--blue)}
-.wrap{max-width:1050px;margin:auto;padding:20px 14px 45px}
-header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px}
-h1{font-size:clamp(25px,4vw,33px);margin:0}
-header p{margin:3px 0;color:var(--muted);font-size:14px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:17px;margin-bottom:15px;box-shadow:var(--shadow)}
-h2{font-size:18px;margin:0 0 13px}
-.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:17px}
-.stat{background:#fff;border:1px solid var(--line);border-radius:15px;padding:15px}
-.stat small{display:block;color:var(--muted);margin-bottom:5px}
-.stat strong{font-size:clamp(20px,3vw,27px);overflow-wrap:anywhere}
-.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.field{display:flex;flex-direction:column;gap:5px;min-width:0}
-.field label{font-size:13px;font-weight:650;color:var(--muted)}
-.field input,.field select,.field textarea{width:100%;min-width:0;border:1px solid #cfd7e4;border-radius:9px;padding:11px;background:white;color:var(--tx)}
-.field textarea{min-height:70px;resize:vertical}
-.full{grid-column:1/-1}
-.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}
-.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:15px}
-.tabs button{background:#e8edf5;color:#344054}
+.wrap{max-width:900px;margin:auto;padding:16px 12px 45px}
+header{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+h1{font-size:clamp(24px,4vw,30px);margin:0}
+h2{font-size:17px;margin:0 0 12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:15px;margin-bottom:14px}
+.muted,.small{color:var(--muted);font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px}
+.stat small{display:block;color:var(--muted)}
+.stat strong{font-size:clamp(17px,3.2vw,24px);overflow-wrap:anywhere}
+.neg{color:var(--red)}.pos{color:var(--green)}
+.monthbar{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:12px}
+.monthbar b{min-width:160px;text-align:center;text-transform:capitalize}
+.monthbar button{padding:8px 14px}
+.tabs{display:flex;gap:8px;margin-bottom:14px}
+.tabs button{flex:1;background:var(--soft);color:var(--softtx)}
 .tabs button.active{background:var(--blue);color:#fff}
-.filters{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px}
-.tablewrap{overflow:auto}
-table{width:100%;min-width:600px;border-collapse:collapse}
-th,td{text-align:left;padding:11px 9px;border-bottom:1px solid var(--line);vertical-align:middle}
-th{font-size:12px;text-transform:uppercase;color:var(--muted)}
-.amount{text-align:right;white-space:nowrap;font-weight:750}
-.pill{display:inline-block;border-radius:99px;padding:3px 8px;font-size:12px;background:#fff0ef;color:var(--red)}
-.pill.income{background:#e8f7ef;color:var(--green)}
-.rowactions{display:flex;gap:5px;white-space:nowrap}
-.rowactions button{font-size:12px;padding:7px 9px}
-.notice{padding:12px 14px;border-radius:11px;background:#fff5dc;color:#765200;margin-bottom:14px;font-size:14px;overflow-wrap:anywhere}
+.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field label{font-size:13px;font-weight:650;color:var(--muted)}
+input,select,textarea{width:100%;min-width:0;border:1px solid var(--line);border-radius:9px;padding:11px;background:var(--inp);color:var(--tx)}
+textarea{min-height:60px;resize:vertical}
+.full{grid-column:1/-1}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.filters{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.mv{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--line)}
+.mv:last-child{border:0}
+.mv .l{min-width:0}
+.mv .l strong{display:block;overflow-wrap:anywhere}
+.mv .r{text-align:right;white-space:nowrap}
+.mv .r b{display:block}
+.mv .r button{padding:4px 8px;font-size:12px}
+.day{font-size:12px;font-weight:700;text-transform:uppercase;color:var(--muted);margin:12px 0 0}
+.cat{margin-bottom:12px;cursor:pointer}
+.cat .t{display:flex;justify-content:space-between;gap:8px;font-size:15px}
+.bar{height:9px;background:var(--line);border-radius:9px;overflow:hidden;margin:4px 0 2px}
+.bar i{display:block;height:100%;background:var(--blue);border-radius:9px}
+.notice{padding:11px 13px;border-radius:11px;background:#fff5dc;color:#765200;margin-bottom:12px;font-size:14px;overflow-wrap:anywhere}
 .notice.error{background:#fff0ef;color:#9d241a}
 .notice.success{background:#eaf8f0;color:#12683e}
 .hidden{display:none!important}
-.muted,.small{color:var(--muted);font-size:13px}
-.auth{max-width:440px;margin:7vh auto}
+.auth{max-width:420px;margin:6vh auto}
 .auth .field{margin-bottom:12px}
-.category-row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
-.category-row input{flex:1;min-width:0;border:1px solid #cfd7e4;border-radius:9px;padding:10px}
-.section-title{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.empty{text-align:center;padding:25px;color:var(--muted)}
-footer{text-align:center;color:var(--muted);font-size:12px;padding:12px}
-@media(max-width:650px){
- .wrap{padding:14px 10px 35px}.card{padding:13px}
- .grid{grid-template-columns:1fr}
- .formgrid,.filters{grid-template-columns:1fr}
- .full{grid-column:auto}
- .stat{padding:12px}
- .stat strong{font-size:24px}
- .actions button{flex:1}
- .category-row{flex-wrap:wrap}
- .category-row input{flex-basis:100%}
-}
+.category-row{display:flex;gap:6px;align-items:center;margin-bottom:8px}
+.empty{text-align:center;padding:22px;color:var(--muted)}
+footer{text-align:center;color:var(--muted);font-size:12px;padding:10px}
+@media(max-width:560px){.grid{grid-template-columns:1fr 1fr}.grid .stat:first-child{grid-column:1/-1}.formgrid,.filters{grid-template-columns:1fr}.full{grid-column:auto}.actions button{flex:1}}
 </style>
 </head>
 <body>
 <div class="wrap">
 <header>
- <div>
-  <h1>Os Meus Gastos</h1>
-  <p>Controla as tuas despesas e receitas.</p>
-  <div class="small" id="syncStatus">A iniciar...</div>
- </div>
- <div id="headerActions" class="hidden">
-  <button id="exportBtn" class="secondary">Exportar CSV</button>
-  <button id="logoutBtn" class="ghost">Terminar sessão</button>
- </div>
+ <div><h1>Os Meus Gastos</h1><div class="small" id="syncStatus">A iniciar...</div></div>
+ <div id="headerActions" class="hidden"><button id="exportBtn" class="secondary">CSV</button> <button id="logoutBtn" class="ghost">Sair</button></div>
 </header>
-
 <div id="message" class="notice hidden" role="status"></div>
 
 <section id="authView" class="card auth">
  <h2 id="authTitle">Iniciar sessão</h2>
- <p class="small">Utiliza a mesma conta nos dois iPhones para acederes aos mesmos dados.</p>
+ <p class="small">Usa a mesma conta nos dois telemóveis para veres os mesmos dados.</p>
  <form id="authForm">
   <div class="field"><label for="email">Email</label><input id="email" type="email" autocomplete="email" required></div>
   <div class="field"><label for="password">Palavra-passe</label><input id="password" type="password" autocomplete="current-password" minlength="6" required></div>
   <button id="authSubmit" type="submit" style="width:100%">Iniciar sessão</button>
  </form>
  <div class="actions"><button id="toggleAuth" class="secondary" type="button">Criar conta</button></div>
- <p class="small">Se a confirmação de email estiver ativa, confirma o email antes de iniciares sessão.</p>
 </section>
 
 <main id="appView" class="hidden">
+ <div class="monthbar"><button id="prevM" class="secondary" aria-label="Mês anterior">‹</button><b id="monthLabel"></b><button id="nextM" class="secondary" aria-label="Mês seguinte">›</button></div>
  <div class="grid">
-  <div class="stat"><small>Saldo deste mês</small><strong id="balance">0,00 €</strong></div>
-  <div class="stat"><small>Despesas deste mês</small><strong id="expenses">0,00 €</strong></div>
-  <div class="stat"><small>Receitas deste mês</small><strong id="income">0,00 €</strong></div>
+  <div class="stat"><small>Saldo</small><strong id="balance">0,00 €</strong><small id="prevBal"></small></div>
+  <div class="stat"><small>Despesas</small><strong id="expenses">0,00 €</strong></div>
+  <div class="stat"><small>Receitas</small><strong id="income">0,00 €</strong></div>
  </div>
-
  <div class="tabs">
   <button class="active" data-tab="movements">Movimentos</button>
+  <button data-tab="summary">Resumo</button>
   <button data-tab="categories">Categorias</button>
  </div>
 
@@ -119,494 +107,294 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:12px}
     <input type="hidden" id="movementId">
     <div class="formgrid">
      <div class="field"><label for="type">Tipo</label><select id="type"><option value="despesa">Despesa</option><option value="receita">Receita</option></select></div>
-     <div class="field"><label for="amount">Valor (€)</label><input id="amount" type="number" min="0.01" step="0.01" placeholder="0,00" required></div>
+     <div class="field"><label for="amount">Valor (€)</label><input id="amount" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="0,00" required></div>
      <div class="field"><label for="date">Data</label><input id="date" type="date" required></div>
      <div class="field"><label for="category">Categoria</label><select id="category" required></select></div>
      <div class="field full"><label for="description">Descrição</label><input id="description" maxlength="150" placeholder="Ex.: supermercado" required></div>
      <div class="field full"><label for="notes">Notas (opcional)</label><textarea id="notes" maxlength="1000"></textarea></div>
     </div>
-    <div class="actions">
-     <button id="saveBtn" type="submit">Guardar movimento</button>
-     <button id="cancelEdit" class="secondary hidden" type="button">Cancelar edição</button>
-    </div>
+    <div class="actions"><button id="saveBtn" type="submit">Guardar movimento</button><button id="cancelEdit" class="secondary hidden" type="button">Cancelar</button></div>
    </form>
   </div>
-
   <div class="card">
-   <div class="section-title"><h2>Histórico de movimentos</h2><span id="count" class="small"></span></div>
+   <div style="display:flex;justify-content:space-between;align-items:center"><h2>Histórico</h2><span id="count" class="small"></span></div>
    <div class="filters">
-    <div class="field"><label for="monthFilter">Mês</label><input id="monthFilter" type="month"></div>
     <div class="field"><label for="categoryFilter">Categoria</label><select id="categoryFilter"><option value="">Todas</option></select></div>
     <div class="field"><label for="searchFilter">Pesquisar</label><input id="searchFilter" type="search" placeholder="Descrição ou notas"></div>
    </div>
-   <div class="tablewrap">
-    <table>
-     <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Tipo</th><th style="text-align:right">Valor</th><th>Ações</th></tr></thead>
-     <tbody id="movementRows"></tbody>
-    </table>
-   </div>
-   <div id="emptyMovements" class="empty hidden">Não existem movimentos para estes filtros.</div>
+   <div id="movementRows"></div>
+   <div id="emptyMovements" class="empty hidden">Sem movimentos neste mês.</div>
   </div>
+ </section>
+
+ <section id="summaryTab" class="hidden">
+  <div class="card"><h2>Para onde vai o dinheiro</h2><div id="breakdown"></div><p class="small">Toca numa categoria para ver os movimentos. A seta compara com o mês anterior.</p></div>
+  <div class="card"><h2>Últimos 6 meses</h2><div id="history"></div></div>
  </section>
 
  <section id="categoriesTab" class="hidden">
   <div class="card">
    <h2>Adicionar categoria</h2>
-   <form id="categoryForm">
-    <div class="field"><label for="newCategory">Nome</label><input id="newCategory" maxlength="50" required placeholder="Ex.: Animais"></div>
-    <div class="actions"><button type="submit">Adicionar categoria</button></div>
-   </form>
+   <form id="categoryForm"><div class="field"><label for="newCategory">Nome</label><input id="newCategory" maxlength="50" required placeholder="Ex.: Animais"></div><div class="actions"><button type="submit">Adicionar</button></div></form>
   </div>
-  <div class="card">
-   <h2>Gerir categorias</h2>
-   <p class="small">Podes mudar o nome ou apagar categorias sem movimentos associados. As alterações ficam guardadas na tua conta.</p>
-   <div id="categoryList"></div>
-  </div>
+  <div class="card"><h2>Gerir categorias</h2><p class="small">Mudar o nome altera também os movimentos existentes. Só se apagam categorias sem movimentos.</p><div id="categoryList"></div></div>
  </section>
 </main>
-<footer>Os Meus Gastos · Dados sincronizados com Supabase</footer>
+<footer>Dados sincronizados com Supabase</footer>
 </div>
 
 <script>
-/* CONFIGURAÇÃO SUPABASE */
-const SUPABASE_URL = "https://gydouittbuvlhgptkdkp.supabase.co";
-const SUPABASE_KEY = "sb_publishable_9WysdEayiy9V5vo3ttoR-g_TCU1YpLY";
+const SUPABASE_URL="https://gydouittbuvlhgptkdkp.supabase.co";
+const SUPABASE_KEY="sb_publishable_9WysdEayiy9V5vo3ttoR-g_TCU1YpLY";
+const DEFAULT_CATEGORIES=["Casa","Alimentação","Transportes","Saúde","Lazer","Compras","Educação","Serviços","Salário","Outras receitas","Outras despesas"];
+const $=id=>document.getElementById(id);
+const money=n=>new Intl.NumberFormat("pt-PT",{style:"currency",currency:"EUR"}).format(Number(n)||0);
+const pad=n=>String(n).padStart(2,"0");
+const today=()=>{const d=new Date();return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`};
+const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+const lc=s=>String(s).toLocaleLowerCase("pt-PT");
+const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
 
-const DEFAULT_CATEGORIES = [
- "Casa","Alimentação","Transportes","Saúde","Lazer",
- "Compras","Educação","Serviços","Salário","Outras receitas","Outras despesas"
-];
+let sb=null,user=null,movements=[],categories=[],channel=null,signup=false,timer=null;
+let month=today().slice(0,7);
 
-const $ = id => document.getElementById(id);
-const money = n => new Intl.NumberFormat("pt-PT",{style:"currency",currency:"EUR"}).format(Number(n)||0);
-const today = () => {
- const d = new Date();
- return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+function msg(t,k=""){$("message").textContent=t;$("message").className="notice"+(k?" "+k:"")}
+function clearMsg(){$("message").classList.add("hidden")}
+function status(t){$("syncStatus").textContent=t}
+function shiftMonth(m,d){const [y,mo]=m.split("-").map(Number);const dt=new Date(y,mo-1+d,1);return `${dt.getFullYear()}-${pad(dt.getMonth()+1)}`}
+function monthName(m,short){const [y,mo]=m.split("-").map(Number);return new Date(y,mo-1,1).toLocaleDateString("pt-PT",short?{month:"short"}:{month:"long",year:"numeric"})}
+const inMonth=(m,mm)=>(m.date||"").startsWith(mm);
+const sum=(rows,t)=>rows.filter(m=>m.type===t).reduce((s,m)=>s+m.amount,0);
+
+function initClient(){
+ if(!window.supabase){msg("Não foi possível carregar o Supabase. Verifica a ligação à Internet.","error");return false}
+ try{sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);return true}
+ catch(e){msg("Erro na configuração do Supabase: "+e.message,"error");return false}
+}
+function showAuth(){$("authView").classList.remove("hidden");$("appView").classList.add("hidden");$("headerActions").classList.add("hidden");status("Sessão não iniciada")}
+function showApp(){$("authView").classList.add("hidden");$("appView").classList.remove("hidden");$("headerActions").classList.remove("hidden");$("date").value=today()}
+
+$("toggleAuth").onclick=()=>{
+ signup=!signup;
+ $("authTitle").textContent=$("authSubmit").textContent=signup?"Criar conta":"Iniciar sessão";
+ $("toggleAuth").textContent=signup?"Já tenho conta":"Criar conta";
+ $("password").autocomplete=signup?"new-password":"current-password";clearMsg();
 };
-const currentMonth = () => today().slice(0,7);
-const escapeHTML = value => String(value ?? "").replace(/[&<>"']/g, c => ({
- "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
-})[c]);
-
-let supabaseClient = null;
-let currentUser = null;
-let movements = [];
-let categories = [];
-let realtimeChannel = null;
-let signupMode = false;
-let refreshTimer = null;
-
-function message(text, kind="") {
- $("message").textContent = text;
- $("message").className = "notice" + (kind ? " " + kind : "");
-}
-function clearMessage() { $("message").classList.add("hidden"); }
-function status(text) { $("syncStatus").textContent = text; }
-
-
-function initClient() {
-  if (!window.supabase) {
-    message(
-      "Não foi possível carregar o Supabase. Verifica a ligação à Internet.",
-      "error"
-    );
-    return false;
-  }
-
-  if (
-    !SUPABASE_URL ||
-    !SUPABASE_KEY ||
-    SUPABASE_KEY === "COLOCA_AQUI_A_TUA_CHAVE_PUBLICA"
-  ) {
-    message(
-      "Falta configurar o URL ou a chave pública do Supabase.",
-      "error"
-    );
-    return false;
-  }
-
-  try {
-    supabaseClient = window.supabase.createClient(
-      SUPABASE_URL,
-      SUPABASE_KEY
-    );
-    return true;
-  } catch (err) {
-    message(
-      "Erro na configuração do Supabase: " + err.message,
-      "error"
-    );
-    return false;
-  }
-}
-function showAuth() {
- $("authView").classList.remove("hidden");
- $("appView").classList.add("hidden");
- $("headerActions").classList.add("hidden");
- status("Sessão não iniciada");
-}
-function showApp() {
- $("authView").classList.add("hidden");
- $("appView").classList.remove("hidden");
- $("headerActions").classList.remove("hidden");
- $("date").value = today();
- $("monthFilter").value = currentMonth();
-}
-
-$("toggleAuth").addEventListener("click", () => {
- signupMode = !signupMode;
- $("authTitle").textContent = signupMode ? "Criar conta" : "Iniciar sessão";
- $("authSubmit").textContent = signupMode ? "Criar conta" : "Iniciar sessão";
- $("toggleAuth").textContent = signupMode ? "Já tenho conta" : "Criar conta";
- $("password").autocomplete = signupMode ? "new-password" : "current-password";
- clearMessage();
+$("authForm").addEventListener("submit",async e=>{
+ e.preventDefault();clearMsg();
+ if(!sb&&!initClient())return;
+ $("authSubmit").disabled=true;
+ try{
+  const email=$("email").value.trim(),password=$("password").value;
+  const r=signup?await sb.auth.signUp({email,password}):await sb.auth.signInWithPassword({email,password});
+  if(r.error)throw r.error;
+  if(signup&&!r.data.session){msg("Conta criada. Confirma o email, se pedido, e inicia sessão.","success");return}
+  user=r.data.user||r.data.session?.user;
+  if(user)await startApp();
+ }catch(err){msg("Não foi possível entrar: "+err.message,"error")}
+ finally{$("authSubmit").disabled=false}
 });
 
-$("authForm").addEventListener("submit", async event => {
- event.preventDefault();
- clearMessage();
- if (!supabaseClient && !initClient()) return;
- $("authSubmit").disabled = true;
- try {
-  const email = $("email").value.trim();
-  const password = $("password").value;
-  const result = signupMode
-   ? await supabaseClient.auth.signUp({email,password})
-   : await supabaseClient.auth.signInWithPassword({email,password});
-  if (result.error) throw result.error;
-
-  if (signupMode && !result.data.session) {
-   message("Conta criada. Confirma o email, se solicitado, e depois inicia sessão.","success");
-   return;
-  }
-  currentUser = result.data.user || result.data.session?.user;
-  if (currentUser) await startApp();
- } catch (err) {
-  message("Não foi possível iniciar sessão/criar conta: " + err.message,"error");
- } finally {
-  $("authSubmit").disabled = false;
- }
-});
-
-async function startApp() {
- if (!currentUser) return;
- showApp();
- clearMessage();
- status("A sincronizar...");
- await loadAll();
- subscribeRealtime();
+async function startApp(){
+ if(!user)return;
+ showApp();clearMsg();status("A sincronizar...");
+ await loadAll();subscribe();
 }
 
-async function loadAll() {
- if (!currentUser) return;
- try {
-  const result = await supabaseClient
-   .from("gastos")
-   .select("id,user_id,data,descricao,categoria,valor,tipo,notas,created_at")
-   .order("data",{ascending:false})
-   .limit(5000);
-  if (result.error) throw result.error;
-
-  movements = (result.data || []).map(r => ({
-   id:r.id,
-   date:r.data,
-   description:r.descricao || "",
-   category:r.categoria || "Outras despesas",
-   amount:Number(r.valor) || 0,
-   type:r.tipo === "receita" ? "receita" : "despesa",
-   notes:r.notas || "",
-   created_at:r.created_at
-  }));
-
+async function loadAll(){
+ if(!user)return;
+ try{
+  const r=await sb.from("gastos").select("id,user_id,data,descricao,categoria,valor,tipo,notas,created_at").order("data",{ascending:false}).limit(5000);
+  if(r.error)throw r.error;
+  movements=(r.data||[]).map(x=>({id:x.id,date:x.data,description:x.descricao||"",category:x.categoria||"Outras despesas",amount:Number(x.valor)||0,type:x.tipo==="receita"?"receita":"despesa",notes:x.notas||""}));
   await loadCategories();
   renderAll();
-  status("Sincronizado · " + new Date().toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"}));
- } catch (err) {
-  status("Erro de sincronização");
-  message("Não foi possível sincronizar: " + err.message + ". Confirma a tabela gastos e as respetivas políticas RLS.","error");
+  status("Sincronizado · "+new Date().toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"}));
+ }catch(err){status("Erro de sincronização");msg("Não foi possível sincronizar: "+err.message,"error")}
+}
+async function loadCategories(){
+ const r=await sb.from("categorias_gastos").select("id,user_id,nome").order("nome",{ascending:true});
+ if(r.error)throw new Error("Não foi possível carregar categorias: "+r.error.message);
+ const saved=(r.data||[]).map(x=>x.nome).filter(Boolean);
+ /* Só cria as categorias predefinidas na primeira utilização (assim as apagadas não reaparecem). */
+ if(!saved.length){
+  const ins=await sb.from("categorias_gastos").insert(DEFAULT_CATEGORIES.map(nome=>({user_id:user.id,nome})));
+  if(ins.error&&ins.error.code!=="23505")throw ins.error;
+  saved.push(...DEFAULT_CATEGORIES);
  }
+ const used=movements.map(m=>m.category).filter(Boolean);
+ categories=[...new Set([...saved,...used])].sort((a,b)=>a.localeCompare(b,"pt-PT"));
 }
 
-/* Categorias guardadas na tabela categorias_gastos. */
-async function loadCategories() {
- const result = await supabaseClient
-  .from("categorias_gastos")
-  .select("id,user_id,nome")
-  .order("nome",{ascending:true});
-
- if (result.error) {
-  throw new Error("Não foi possível carregar categorias. Executa primeiro o SQL de configuração indicado abaixo do código. Detalhe: " + result.error.message);
- }
-
- const saved = (result.data || []).map(r => r.nome).filter(Boolean);
- const used = movements.map(m => m.category).filter(Boolean);
- const names = [...DEFAULT_CATEGORIES,...used,...saved];
- categories = [...new Set(names)].sort((a,b)=>a.localeCompare(b,"pt-PT"));
- 
- /* Insere categorias predefinidas que ainda não existam na conta. */
- const existing = new Set(saved.map(x=>x.toLocaleLowerCase("pt-PT")));
- const missing = DEFAULT_CATEGORIES.filter(name=>!existing.has(name.toLocaleLowerCase("pt-PT")));
- if (missing.length) {
-  const inserted = await supabaseClient.from("categorias_gastos").insert(
-   missing.map(nome=>({user_id:currentUser.id,nome}))
-  );
-  if (inserted.error && inserted.error.code !== "23505") throw inserted.error;
- }
+function renderAll(){renderMonth();renderOptions();renderStats();renderMovements();renderSummary();renderCategories()}
+function renderMonth(){$("monthLabel").textContent=monthName(month)}
+function renderOptions(){
+ const oc=$("category").value||store.get("lastCat"),of=$("categoryFilter").value;
+ const opts=categories.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join("");
+ $("category").innerHTML=opts;
+ $("categoryFilter").innerHTML='<option value="">Todas</option>'+opts;
+ if(categories.includes(oc))$("category").value=oc;
+ if(categories.includes(of))$("categoryFilter").value=of;
 }
-
-function renderAll() {
- renderCategoryOptions();
- renderStats();
- renderMovements();
- renderCategories();
+function renderStats(){
+ const rows=movements.filter(m=>inMonth(m,month));
+ const inc=sum(rows,"receita"),exp=sum(rows,"despesa"),bal=inc-exp;
+ $("balance").textContent=money(bal);$("balance").className=bal<0?"neg":"";
+ $("expenses").textContent=money(exp);$("income").textContent=money(inc);
+ const pe=sum(movements.filter(m=>inMonth(m,shiftMonth(month,-1))),"despesa");
+ $("prevBal").textContent=pe?`Mês anterior: ${money(pe)} em despesas`:"";
 }
-function renderCategoryOptions() {
- const oldCategory = $("category").value;
- const oldFilter = $("categoryFilter").value;
- $("category").innerHTML = categories.map(c =>
-  `<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`
- ).join("");
- $("categoryFilter").innerHTML = '<option value="">Todas</option>' +
-  categories.map(c=>`<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`).join("");
- if (categories.includes(oldCategory)) $("category").value=oldCategory;
- if (categories.includes(oldFilter)) $("categoryFilter").value=oldFilter;
+function getFiltered(){
+ const c=$("categoryFilter").value,q=lc($("searchFilter").value.trim());
+ return movements.filter(m=>inMonth(m,month)&&(!c||m.category===c)&&(!q||lc(`${m.description} ${m.notes} ${m.category}`).includes(q)))
+  .sort((a,b)=>(b.date||"").localeCompare(a.date||""));
 }
-function renderStats() {
- const rows = movements.filter(m=>(m.date||"").startsWith(currentMonth()));
- const income = rows.filter(m=>m.type==="receita").reduce((s,m)=>s+m.amount,0);
- const expenses = rows.filter(m=>m.type==="despesa").reduce((s,m)=>s+m.amount,0);
- $("balance").textContent=money(income-expenses);
- $("expenses").textContent=money(expenses);
- $("income").textContent=money(income);
-}
-function getFiltered() {
- const month=$("monthFilter").value;
- const category=$("categoryFilter").value;
- const query=$("searchFilter").value.trim().toLocaleLowerCase("pt-PT");
- return movements.filter(m=>
-  (!month||(m.date||"").startsWith(month)) &&
-  (!category||m.category===category) &&
-  (!query||`${m.description} ${m.notes} ${m.category}`.toLocaleLowerCase("pt-PT").includes(query))
- ).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
-}
-function renderMovements() {
+function renderMovements(){
  const rows=getFiltered();
  $("count").textContent=`${rows.length} movimento(s)`;
- $("emptyMovements").classList.toggle("hidden",rows.length!==0);
- $("movementRows").innerHTML=rows.map(m=>`
-  <tr>
-   <td>${escapeHTML(m.date)}</td>
-   <td><strong>${escapeHTML(m.description)}</strong>${m.notes?`<div class="small">${escapeHTML(m.notes)}</div>`:""}</td>
-   <td>${escapeHTML(m.category)}</td>
-   <td><span class="pill ${m.type==="receita"?"income":""}">${m.type==="receita"?"Receita":"Despesa"}</span></td>
-   <td class="amount">${m.type==="receita"?"+":"−"}${money(m.amount)}</td>
-   <td><div class="rowactions">
-    <button type="button" class="secondary" data-edit="${escapeHTML(m.id)}">Editar</button>
-    <button type="button" class="danger" data-delete="${escapeHTML(m.id)}">Apagar</button>
-   </div></td>
-  </tr>`).join("");
- $("movementRows").querySelectorAll("[data-edit]").forEach(b=>b.addEventListener("click",()=>editMovement(b.dataset.edit)));
- $("movementRows").querySelectorAll("[data-delete]").forEach(b=>b.addEventListener("click",()=>deleteMovement(b.dataset.delete)));
+ $("emptyMovements").classList.toggle("hidden",rows.length>0);
+ let last="",html="";
+ for(const m of rows){
+  if(m.date!==last){last=m.date;html+=`<div class="day">${esc(new Date(m.date+"T12:00").toLocaleDateString("pt-PT",{weekday:"short",day:"numeric",month:"short"}))}</div>`}
+  html+=`<div class="mv"><div class="l"><strong>${esc(m.description)}</strong><span class="small">${esc(m.category)}${m.notes?" · "+esc(m.notes):""}</span></div>
+  <div class="r"><b class="${m.type==="receita"?"pos":""}">${m.type==="receita"?"+":"−"}${money(m.amount)}</b>
+  <button class="ghost" data-edit="${esc(m.id)}">Editar</button><button class="danger" data-del="${esc(m.id)}">Apagar</button></div></div>`;
+ }
+ const box=$("movementRows");box.innerHTML=html;
+ box.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>editMovement(b.dataset.edit));
+ box.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>deleteMovement(b.dataset.del));
 }
-function renderCategories() {
- $("categoryList").innerHTML=categories.map(c=>`
-  <div class="category-row">
-   <input aria-label="Nome da categoria" data-cat-input="${escapeHTML(c)}" value="${escapeHTML(c)}" maxlength="50">
-   <button type="button" class="secondary" data-cat-save="${escapeHTML(c)}">Guardar</button>
-   <button type="button" class="danger" data-cat-delete="${escapeHTML(c)}">Apagar</button>
-  </div>`).join("");
- $("categoryList").querySelectorAll("[data-cat-save]").forEach(b=>
-  b.addEventListener("click",()=>renameCategory(b.dataset.catSave,b.parentElement.querySelector("input").value))
- );
- $("categoryList").querySelectorAll("[data-cat-delete]").forEach(b=>
-  b.addEventListener("click",()=>deleteCategory(b.dataset.catDelete))
- );
+function renderSummary(){
+ const cur=movements.filter(m=>inMonth(m,month)&&m.type==="despesa"),prev=movements.filter(m=>inMonth(m,shiftMonth(month,-1))&&m.type==="despesa");
+ const by=rows=>rows.reduce((o,m)=>(o[m.category]=(o[m.category]||0)+m.amount,o),{});
+ const c=by(cur),p=by(prev),total=Object.values(c).reduce((a,b)=>a+b,0);
+ const list=Object.entries(c).sort((a,b)=>b[1]-a[1]);
+ $("breakdown").innerHTML=list.length?list.map(([k,v])=>{
+  const d=p[k]?v-p[k]:null;
+  const arrow=d===null?"":`<span class="small ${d>0?"neg":"pos"}">${d>0?"▲":"▼"} ${money(Math.abs(d))}</span>`;
+  return `<div class="cat" data-c="${esc(k)}"><div class="t"><span>${esc(k)}</span><span><b>${money(v)}</b> <span class="small">${Math.round(v/total*100)}%</span></span></div>
+  <div class="bar"><i style="width:${Math.max(2,v/list[0][1]*100)}%"></i></div>${arrow}</div>`}).join(""):'<div class="empty">Sem despesas neste mês.</div>';
+ $("breakdown").querySelectorAll("[data-c]").forEach(el=>el.onclick=()=>{$("categoryFilter").value=el.dataset.c;renderMovements();openTab("movements")});
+ const months=[];for(let i=5;i>=0;i--)months.push(shiftMonth(month,-i));
+ const data=months.map(m=>({m,e:sum(movements.filter(x=>inMonth(x,m)),"despesa"),r:sum(movements.filter(x=>inMonth(x,m)),"receita")}));
+ const max=Math.max(1,...data.map(d=>Math.max(d.e,d.r)));
+ $("history").innerHTML=data.map(d=>`<div class="cat" style="cursor:default"><div class="t"><span style="text-transform:capitalize">${monthName(d.m,true)}</span><span class="small">${money(d.e)} desp. · ${money(d.r)} rec.</span></div>
+ <div class="bar"><i style="width:${d.e/max*100}%;background:var(--red)"></i></div></div>`).join("");
+}
+function renderCategories(){
+ $("categoryList").innerHTML=categories.map(c=>`<div class="category-row"><input aria-label="Nome" value="${esc(c)}" maxlength="50" data-old="${esc(c)}">
+ <button class="secondary" data-save="${esc(c)}">Guardar</button><button class="danger" data-delc="${esc(c)}">Apagar</button></div>`).join("");
+ $("categoryList").querySelectorAll("[data-save]").forEach(b=>b.onclick=()=>renameCategory(b.dataset.save,b.parentElement.querySelector("input").value));
+ $("categoryList").querySelectorAll("[data-delc]").forEach(b=>b.onclick=()=>deleteCategory(b.dataset.delc));
 }
 
-$("movementForm").addEventListener("submit",async event=>{
- event.preventDefault();
- if(!currentUser)return;
- clearMessage();
+$("movementForm").addEventListener("submit",async e=>{
+ e.preventDefault();if(!user)return;clearMsg();
  const id=$("movementId").value;
- const row={
-  user_id:currentUser.id,
-  data:$("date").value,
-  descricao:$("description").value.trim(),
-  categoria:$("category").value,
-  valor:Number($("amount").value),
-  tipo:$("type").value,
-  notas:$("notes").value.trim()
- };
- if(!row.data||!row.descricao||!Number.isFinite(row.valor)||row.valor<=0){
-  message("Preenche a data, descrição e um valor superior a zero.","error");return;
- }
+ const row={user_id:user.id,data:$("date").value,descricao:$("description").value.trim(),categoria:$("category").value,valor:Number($("amount").value),tipo:$("type").value,notas:$("notes").value.trim()};
+ if(!row.data||!row.descricao||!Number.isFinite(row.valor)||row.valor<=0){msg("Preenche a data, a descrição e um valor superior a zero.","error");return}
  $("saveBtn").disabled=true;
- try {
-  const result=id
-   ? await supabaseClient.from("gastos").update(row).eq("id",id).eq("user_id",currentUser.id)
-   : await supabaseClient.from("gastos").insert(row);
-  if(result.error)throw result.error;
-  resetMovementForm();
-  await loadAll();
-  message(id?"Movimento atualizado.":"Movimento guardado com sucesso.","success");
- } catch(err) {
-  message("Erro ao guardar o movimento: "+err.message,"error");
- } finally {
-  $("saveBtn").disabled=false;
- }
+ try{
+  const r=id?await sb.from("gastos").update(row).eq("id",id).eq("user_id",user.id):await sb.from("gastos").insert(row);
+  if(r.error)throw r.error;
+  store.set("lastCat",row.categoria);
+  month=row.data.slice(0,7); /* mostra logo o mês do movimento guardado */
+  resetForm();await loadAll();
+  msg(id?"Movimento atualizado.":"Movimento guardado.","success");
+ }catch(err){msg("Erro ao guardar: "+err.message,"error")}
+ finally{$("saveBtn").disabled=false}
 });
-
-function editMovement(id) {
+function editMovement(id){
+ const m=movements.find(x=>String(x.id)===String(id));if(!m)return;
+ $("movementId").value=m.id;$("type").value=m.type;$("amount").value=m.amount;$("date").value=m.date;
+ $("category").value=m.category;$("description").value=m.description;$("notes").value=m.notes;
+ $("formTitle").textContent="Editar movimento";$("saveBtn").textContent="Guardar alterações";
+ $("cancelEdit").classList.remove("hidden");window.scrollTo({top:0,behavior:"smooth"});
+}
+function resetForm(){
+ const c=$("category").value;
+ $("movementForm").reset();$("movementId").value="";$("date").value=today();
+ if(categories.includes(c))$("category").value=c;
+ $("formTitle").textContent="Adicionar movimento";$("saveBtn").textContent="Guardar movimento";$("cancelEdit").classList.add("hidden");
+}
+$("cancelEdit").onclick=resetForm;
+async function deleteMovement(id){
  const m=movements.find(x=>String(x.id)===String(id));
- if(!m)return;
- $("movementId").value=m.id;
- $("type").value=m.type;
- $("amount").value=m.amount;
- $("date").value=m.date;
- $("category").value=m.category;
- $("description").value=m.description;
- $("notes").value=m.notes;
- $("formTitle").textContent="Editar movimento";
- $("saveBtn").textContent="Guardar alterações";
- $("cancelEdit").classList.remove("hidden");
- window.scrollTo({top:0,behavior:"smooth"});
-}
-function resetMovementForm() {
- $("movementForm").reset();
- $("movementId").value="";
- $("date").value=today();
- $("formTitle").textContent="Adicionar movimento";
- $("saveBtn").textContent="Guardar movimento";
- $("cancelEdit").classList.add("hidden");
-}
-$("cancelEdit").addEventListener("click",resetMovementForm);
-
-async function deleteMovement(id) {
- const m=movements.find(x=>String(x.id)===String(id));
- if(!m||!confirm(`Apagar «${m.description}»? Esta ação não pode ser desfeita.`))return;
- try {
-  const result=await supabaseClient.from("gastos").delete().eq("id",id).eq("user_id",currentUser.id);
-  if(result.error)throw result.error;
-  await loadAll();
-  message("Movimento apagado.","success");
- } catch(err) { message("Não foi possível apagar: "+err.message,"error"); }
+ if(!m||!confirm(`Apagar «${m.description}»? Não pode ser desfeito.`))return;
+ try{const r=await sb.from("gastos").delete().eq("id",id).eq("user_id",user.id);if(r.error)throw r.error;await loadAll();msg("Movimento apagado.","success")}
+ catch(err){msg("Não foi possível apagar: "+err.message,"error")}
 }
 
-$("categoryForm").addEventListener("submit",async event=>{
- event.preventDefault();
- const name=$("newCategory").value.trim();
- if(!name)return;
- if(categories.some(c=>c.toLocaleLowerCase("pt-PT")===name.toLocaleLowerCase("pt-PT"))){
-  message("Já existe uma categoria com esse nome.","error");return;
- }
- try {
-  const result=await supabaseClient.from("categorias_gastos").insert({user_id:currentUser.id,nome:name});
-  if(result.error)throw result.error;
-  $("newCategory").value="";
-  await loadAll();
-  message("Categoria criada e sincronizada.","success");
- } catch(err) { message("Não foi possível criar a categoria: "+err.message,"error"); }
+$("categoryForm").addEventListener("submit",async e=>{
+ e.preventDefault();const name=$("newCategory").value.trim();if(!name)return;
+ if(categories.some(c=>lc(c)===lc(name))){msg("Já existe uma categoria com esse nome.","error");return}
+ try{const r=await sb.from("categorias_gastos").insert({user_id:user.id,nome:name});if(r.error)throw r.error;$("newCategory").value="";await loadAll();msg("Categoria criada.","success")}
+ catch(err){msg("Não foi possível criar: "+err.message,"error")}
 });
-
-async function renameCategory(oldName,newName) {
- newName=newName.trim();
- if(!newName){message("O nome não pode ficar vazio.","error");return;}
- if(oldName===newName){message("Não existem alterações a guardar.");return;}
- if(categories.some(c=>c.toLocaleLowerCase("pt-PT")===newName.toLocaleLowerCase("pt-PT"))){
-  message("Já existe uma categoria com esse nome.","error");return;
- }
- if(!confirm(`Alterar «${oldName}» para «${newName}» em todos os movimentos existentes?`))return;
- try {
-  /* Renomeia a categoria no registo de categorias. */
-  const cat=await supabaseClient.from("categorias_gastos").update({nome:newName})
-   .eq("user_id",currentUser.id).eq("nome",oldName);
-  if(cat.error)throw cat.error;
-
-  /* Atualiza também os movimentos antigos. */
-  const moves=await supabaseClient.from("gastos").update({categoria:newName})
-   .eq("user_id",currentUser.id).eq("categoria",oldName);
-  if(moves.error)throw moves.error;
-
-  await loadAll();
-  message("Categoria e movimentos atualizados.","success");
- } catch(err) { message("Erro ao alterar a categoria: "+err.message,"error"); }
+async function renameCategory(o,n){
+ n=n.trim();
+ if(!n){msg("O nome não pode ficar vazio.","error");return}
+ if(o===n){msg("Não há alterações a guardar.");return}
+ if(categories.some(c=>lc(c)===lc(n))){msg("Já existe uma categoria com esse nome.","error");return}
+ if(!confirm(`Alterar «${o}» para «${n}» em todos os movimentos?`))return;
+ try{
+  const a=await sb.from("categorias_gastos").update({nome:n}).eq("user_id",user.id).eq("nome",o);if(a.error)throw a.error;
+  const b=await sb.from("gastos").update({categoria:n}).eq("user_id",user.id).eq("categoria",o);if(b.error)throw b.error;
+  await loadAll();msg("Categoria atualizada.","success");
+ }catch(err){msg("Erro ao alterar: "+err.message,"error")}
 }
-
-async function deleteCategory(name) {
- if(movements.some(m=>m.category===name)){
-  message("Esta categoria tem movimentos associados. Edita primeiro esses movimentos e escolhe outra categoria.","error");return;
- }
+async function deleteCategory(name){
+ if(movements.some(m=>m.category===name)){msg("Esta categoria tem movimentos. Muda primeiro a categoria desses movimentos.","error");return}
  if(!confirm(`Apagar a categoria «${name}»?`))return;
- try {
-  const result=await supabaseClient.from("categorias_gastos").delete()
-   .eq("user_id",currentUser.id).eq("nome",name);
-  if(result.error)throw result.error;
-  await loadAll();
-  message("Categoria apagada.","success");
- } catch(err) { message("Erro ao apagar a categoria: "+err.message,"error"); }
+ try{const r=await sb.from("categorias_gastos").delete().eq("user_id",user.id).eq("nome",name);if(r.error)throw r.error;await loadAll();msg("Categoria apagada.","success")}
+ catch(err){msg("Erro ao apagar: "+err.message,"error")}
 }
 
-["monthFilter","categoryFilter","searchFilter"].forEach(id=>
- $(id).addEventListener("input",renderMovements)
-);
+["categoryFilter","searchFilter"].forEach(id=>$(id).addEventListener("input",renderMovements));
+$("prevM").onclick=()=>{month=shiftMonth(month,-1);renderAll()};
+$("nextM").onclick=()=>{month=shiftMonth(month,1);renderAll()};
 
-$("exportBtn").addEventListener("click",()=>{
+function openTab(t){
+ document.querySelectorAll("[data-tab]").forEach(x=>x.classList.toggle("active",x.dataset.tab===t));
+ ["movements","summary","categories"].forEach(n=>$(n+"Tab").classList.toggle("hidden",n!==t));
+}
+document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>openTab(b.dataset.tab));
+
+$("exportBtn").onclick=()=>{
  const rows=getFiltered();
- if(!rows.length){message("Não existem movimentos para exportar com estes filtros.");return;}
- const data=[
-  ["Data","Descrição","Categoria","Tipo","Valor (€)","Notas"],
-  ...rows.map(m=>[m.date,m.description,m.category,m.type,m.amount.toFixed(2).replace(".",","),m.notes])
- ];
- const csv="\uFEFF"+data.map(row=>row.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(";")).join("\r\n");
- const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
- const url=URL.createObjectURL(blob);
- const a=document.createElement("a");
- a.href=url;a.download=`os-meus-gastos-${today()}.csv`;
- document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
- message("Exportação iniciada.","success");
-});
+ if(!rows.length){msg("Não há movimentos para exportar neste mês/filtro.");return}
+ const data=[["Data","Descrição","Categoria","Tipo","Valor (€)","Notas"],...rows.map(m=>[m.date,m.description,m.category,m.type,m.amount.toFixed(2).replace(".",","),m.notes])];
+ const csv="\uFEFF"+data.map(r=>r.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(";")).join("\r\n");
+ const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8;"}));
+ const a=document.createElement("a");a.href=url;a.download=`gastos-${month}.csv`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+ msg("Exportação iniciada.","success");
+};
 
-function subscribeRealtime() {
- if(realtimeChannel) supabaseClient.removeChannel(realtimeChannel);
- realtimeChannel=supabaseClient.channel("gastos-sync-"+currentUser.id)
-  .on("postgres_changes",{
-   event:"*",schema:"public",table:"gastos",filter:"user_id=eq."+currentUser.id
-  },()=>scheduleRefresh())
-  .on("postgres_changes",{
-   event:"*",schema:"public",table:"categorias_gastos",filter:"user_id=eq."+currentUser.id
-  },()=>scheduleRefresh())
-  .subscribe((state)=>{
-   if(state==="SUBSCRIBED")status("Sincronização ativa");
-  });
+function subscribe(){
+ if(channel)sb.removeChannel(channel);
+ const f={event:"*",schema:"public"};
+ channel=sb.channel("gastos-sync-"+user.id)
+  .on("postgres_changes",{...f,table:"gastos",filter:"user_id=eq."+user.id},refresh)
+  .on("postgres_changes",{...f,table:"categorias_gastos",filter:"user_id=eq."+user.id},refresh)
+  .subscribe(s=>{if(s==="SUBSCRIBED")status("Sincronização ativa")});
 }
-function scheduleRefresh() {
- clearTimeout(refreshTimer);
- refreshTimer=setTimeout(()=>loadAll(),500);
-}
+function refresh(){clearTimeout(timer);timer=setTimeout(loadAll,500)}
+/* No iPhone a ligação em tempo real pode cair em segundo plano: recarrega ao voltar à app. */
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&user)loadAll()});
 
-document.querySelectorAll("[data-tab]").forEach(b=>b.addEventListener("click",()=>{
- document.querySelectorAll("[data-tab]").forEach(x=>x.classList.toggle("active",x===b));
- $("movementsTab").classList.toggle("hidden",b.dataset.tab!=="movements");
- $("categoriesTab").classList.toggle("hidden",b.dataset.tab!=="categories");
-}));
+$("logoutBtn").onclick=async()=>{
+ if(channel)await sb.removeChannel(channel);
+ await sb.auth.signOut();user=null;movements=[];categories=[];showAuth();msg("Sessão terminada.","success");
+};
 
-$("logoutBtn").addEventListener("click",async()=>{
- if(realtimeChannel)await supabaseClient.removeChannel(realtimeChannel);
- await supabaseClient.auth.signOut();
- currentUser=null;movements=[];categories=[];
- showAuth();message("Sessão terminada.","success");
-});
-
-if(initClient()) {
- supabaseClient.auth.getSession().then(async({data,error})=>{
-  if(error){message(error.message,"error");return;}
-  if(data.session){currentUser=data.session.user;await startApp();}
-  else showAuth();
+if(initClient()){
+ sb.auth.getSession().then(async({data,error})=>{
+  if(error){msg(error.message,"error");return}
+  if(data.session){user=data.session.user;await startApp()}else showAuth();
  });
- supabaseClient.auth.onAuthStateChange((event,session)=>{
-  if(event==="SIGNED_OUT"){currentUser=null;showAuth();}
- });
+ sb.auth.onAuthStateChange(ev=>{if(ev==="SIGNED_OUT"){user=null;showAuth()}});
 }
 </script>
 </body>
 </html>
+
