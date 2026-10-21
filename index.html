@@ -1,0 +1,594 @@
+
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1769e0">
+<title>Os Meus Gastos</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--bg:#f3f5f9;--card:#fff;--tx:#172033;--muted:#687386;--blue:#1769e0;--line:#e3e8f0;--red:#c0392b;--green:#14804a;--shadow:0 5px 22px #18274b0b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+button,input,select,textarea{font:inherit}
+button{border:0;border-radius:10px;padding:10px 14px;background:var(--blue);color:white;font-weight:650;cursor:pointer}
+button:disabled{opacity:.5;cursor:wait}
+button.secondary{background:#eaf1ff;color:#174b9b}
+button.danger{background:#fff0ef;color:var(--red)}
+button.ghost{background:transparent;color:var(--blue)}
+.wrap{max-width:1050px;margin:auto;padding:20px 14px 45px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+h1{font-size:clamp(25px,4vw,33px);margin:0}
+header p{margin:3px 0;color:var(--muted);font-size:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:17px;margin-bottom:15px;box-shadow:var(--shadow)}
+h2{font-size:18px;margin:0 0 13px}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:17px}
+.stat{background:#fff;border:1px solid var(--line);border-radius:15px;padding:15px}
+.stat small{display:block;color:var(--muted);margin-bottom:5px}
+.stat strong{font-size:clamp(20px,3vw,27px);overflow-wrap:anywhere}
+.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field label{font-size:13px;font-weight:650;color:var(--muted)}
+.field input,.field select,.field textarea{width:100%;min-width:0;border:1px solid #cfd7e4;border-radius:9px;padding:11px;background:white;color:var(--tx)}
+.field textarea{min-height:70px;resize:vertical}
+.full{grid-column:1/-1}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:15px}
+.tabs button{background:#e8edf5;color:#344054}
+.tabs button.active{background:var(--blue);color:#fff}
+.filters{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px}
+.tablewrap{overflow:auto}
+table{width:100%;min-width:600px;border-collapse:collapse}
+th,td{text-align:left;padding:11px 9px;border-bottom:1px solid var(--line);vertical-align:middle}
+th{font-size:12px;text-transform:uppercase;color:var(--muted)}
+.amount{text-align:right;white-space:nowrap;font-weight:750}
+.pill{display:inline-block;border-radius:99px;padding:3px 8px;font-size:12px;background:#fff0ef;color:var(--red)}
+.pill.income{background:#e8f7ef;color:var(--green)}
+.rowactions{display:flex;gap:5px;white-space:nowrap}
+.rowactions button{font-size:12px;padding:7px 9px}
+.notice{padding:12px 14px;border-radius:11px;background:#fff5dc;color:#765200;margin-bottom:14px;font-size:14px;overflow-wrap:anywhere}
+.notice.error{background:#fff0ef;color:#9d241a}
+.notice.success{background:#eaf8f0;color:#12683e}
+.hidden{display:none!important}
+.muted,.small{color:var(--muted);font-size:13px}
+.auth{max-width:440px;margin:7vh auto}
+.auth .field{margin-bottom:12px}
+.category-row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.category-row input{flex:1;min-width:0;border:1px solid #cfd7e4;border-radius:9px;padding:10px}
+.section-title{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.empty{text-align:center;padding:25px;color:var(--muted)}
+footer{text-align:center;color:var(--muted);font-size:12px;padding:12px}
+@media(max-width:650px){
+ .wrap{padding:14px 10px 35px}.card{padding:13px}
+ .grid{grid-template-columns:1fr}
+ .formgrid,.filters{grid-template-columns:1fr}
+ .full{grid-column:auto}
+ .stat{padding:12px}
+ .stat strong{font-size:24px}
+ .actions button{flex:1}
+ .category-row{flex-wrap:wrap}
+ .category-row input{flex-basis:100%}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+ <div>
+  <h1>Os Meus Gastos</h1>
+  <p>Controla as tuas despesas e receitas.</p>
+  <div class="small" id="syncStatus">A iniciar...</div>
+ </div>
+ <div id="headerActions" class="hidden">
+  <button id="exportBtn" class="secondary">Exportar CSV</button>
+  <button id="logoutBtn" class="ghost">Terminar sessão</button>
+ </div>
+</header>
+
+<div id="message" class="notice hidden" role="status"></div>
+
+<section id="authView" class="card auth">
+ <h2 id="authTitle">Iniciar sessão</h2>
+ <p class="small">Utiliza a mesma conta nos dois iPhones para acederes aos mesmos dados.</p>
+ <form id="authForm">
+  <div class="field"><label for="email">Email</label><input id="email" type="email" autocomplete="email" required></div>
+  <div class="field"><label for="password">Palavra-passe</label><input id="password" type="password" autocomplete="current-password" minlength="6" required></div>
+  <button id="authSubmit" type="submit" style="width:100%">Iniciar sessão</button>
+ </form>
+ <div class="actions"><button id="toggleAuth" class="secondary" type="button">Criar conta</button></div>
+ <p class="small">Se a confirmação de email estiver ativa, confirma o email antes de iniciares sessão.</p>
+</section>
+
+<main id="appView" class="hidden">
+ <div class="grid">
+  <div class="stat"><small>Saldo deste mês</small><strong id="balance">0,00 €</strong></div>
+  <div class="stat"><small>Despesas deste mês</small><strong id="expenses">0,00 €</strong></div>
+  <div class="stat"><small>Receitas deste mês</small><strong id="income">0,00 €</strong></div>
+ </div>
+
+ <div class="tabs">
+  <button class="active" data-tab="movements">Movimentos</button>
+  <button data-tab="categories">Categorias</button>
+ </div>
+
+ <section id="movementsTab">
+  <div class="card">
+   <h2 id="formTitle">Adicionar movimento</h2>
+   <form id="movementForm">
+    <input type="hidden" id="movementId">
+    <div class="formgrid">
+     <div class="field"><label for="type">Tipo</label><select id="type"><option value="despesa">Despesa</option><option value="receita">Receita</option></select></div>
+     <div class="field"><label for="amount">Valor (€)</label><input id="amount" type="number" min="0.01" step="0.01" placeholder="0,00" required></div>
+     <div class="field"><label for="date">Data</label><input id="date" type="date" required></div>
+     <div class="field"><label for="category">Categoria</label><select id="category" required></select></div>
+     <div class="field full"><label for="description">Descrição</label><input id="description" maxlength="150" placeholder="Ex.: supermercado" required></div>
+     <div class="field full"><label for="notes">Notas (opcional)</label><textarea id="notes" maxlength="1000"></textarea></div>
+    </div>
+    <div class="actions">
+     <button id="saveBtn" type="submit">Guardar movimento</button>
+     <button id="cancelEdit" class="secondary hidden" type="button">Cancelar edição</button>
+    </div>
+   </form>
+  </div>
+
+  <div class="card">
+   <div class="section-title"><h2>Histórico de movimentos</h2><span id="count" class="small"></span></div>
+   <div class="filters">
+    <div class="field"><label for="monthFilter">Mês</label><input id="monthFilter" type="month"></div>
+    <div class="field"><label for="categoryFilter">Categoria</label><select id="categoryFilter"><option value="">Todas</option></select></div>
+    <div class="field"><label for="searchFilter">Pesquisar</label><input id="searchFilter" type="search" placeholder="Descrição ou notas"></div>
+   </div>
+   <div class="tablewrap">
+    <table>
+     <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Tipo</th><th style="text-align:right">Valor</th><th>Ações</th></tr></thead>
+     <tbody id="movementRows"></tbody>
+    </table>
+   </div>
+   <div id="emptyMovements" class="empty hidden">Não existem movimentos para estes filtros.</div>
+  </div>
+ </section>
+
+ <section id="categoriesTab" class="hidden">
+  <div class="card">
+   <h2>Adicionar categoria</h2>
+   <form id="categoryForm">
+    <div class="field"><label for="newCategory">Nome</label><input id="newCategory" maxlength="50" required placeholder="Ex.: Animais"></div>
+    <div class="actions"><button type="submit">Adicionar categoria</button></div>
+   </form>
+  </div>
+  <div class="card">
+   <h2>Gerir categorias</h2>
+   <p class="small">Podes mudar o nome ou apagar categorias sem movimentos associados. As alterações ficam guardadas na tua conta.</p>
+   <div id="categoryList"></div>
+  </div>
+ </section>
+</main>
+<footer>Os Meus Gastos · Dados sincronizados com Supabase</footer>
+</div>
+
+<script>
+/* CONFIGURAÇÃO SUPABASE */
+const SUPABASE_URL = "https://gydouittbuvlhgptkdkp.supabase.co";
+const SUPABASE_KEY = "sb_publishable_9WysdEayiy9V5vo3ttoR-g_TCU1YpLY";
+
+const DEFAULT_CATEGORIES = [
+ "Casa","Alimentação","Transportes","Saúde","Lazer",
+ "Compras","Educação","Serviços","Salário","Outras receitas","Outras despesas"
+];
+
+const $ = id => document.getElementById(id);
+const money = n => new Intl.NumberFormat("pt-PT",{style:"currency",currency:"EUR"}).format(Number(n)||0);
+const today = () => {
+ const d = new Date();
+ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+};
+const currentMonth = () => today().slice(0,7);
+const escapeHTML = value => String(value ?? "").replace(/[&<>"']/g, c => ({
+ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+})[c]);
+
+let supabaseClient = null;
+let currentUser = null;
+let movements = [];
+let categories = [];
+let realtimeChannel = null;
+let signupMode = false;
+let refreshTimer = null;
+
+function message(text, kind="") {
+ $("message").textContent = text;
+ $("message").className = "notice" + (kind ? " " + kind : "");
+}
+function clearMessage() { $("message").classList.add("hidden"); }
+function status(text) { $("syncStatus").textContent = text; }
+
+function initClient() {
+ if (!window.supabase) {
+  message("Não foi possível carregar o Supabase. Verifica a ligação à Internet.","error");
+  return false;
+ }
+ if (!SUPABASE_KEY || SUPABASE_KEY.includes("sb_publishable_9WysdEayiy9V5vo3ttoR-g_TCU1YpLY")) {
+  message("Falta configurar SUPABASE_KEY. No Supabase, abre Project Settings > API e copia a chave publicável (publishable key) ou anon key.","error");
+  return false;
+ }
+ try {
+  supabaseClient = window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+  return true;
+ } catch (err) {
+  message("Erro na configuração do Supabase: " + err.message,"error");
+  return false;
+ }
+}
+
+function showAuth() {
+ $("authView").classList.remove("hidden");
+ $("appView").classList.add("hidden");
+ $("headerActions").classList.add("hidden");
+ status("Sessão não iniciada");
+}
+function showApp() {
+ $("authView").classList.add("hidden");
+ $("appView").classList.remove("hidden");
+ $("headerActions").classList.remove("hidden");
+ $("date").value = today();
+ $("monthFilter").value = currentMonth();
+}
+
+$("toggleAuth").addEventListener("click", () => {
+ signupMode = !signupMode;
+ $("authTitle").textContent = signupMode ? "Criar conta" : "Iniciar sessão";
+ $("authSubmit").textContent = signupMode ? "Criar conta" : "Iniciar sessão";
+ $("toggleAuth").textContent = signupMode ? "Já tenho conta" : "Criar conta";
+ $("password").autocomplete = signupMode ? "new-password" : "current-password";
+ clearMessage();
+});
+
+$("authForm").addEventListener("submit", async event => {
+ event.preventDefault();
+ clearMessage();
+ if (!supabaseClient && !initClient()) return;
+ $("authSubmit").disabled = true;
+ try {
+  const email = $("email").value.trim();
+  const password = $("password").value;
+  const result = signupMode
+   ? await supabaseClient.auth.signUp({email,password})
+   : await supabaseClient.auth.signInWithPassword({email,password});
+  if (result.error) throw result.error;
+
+  if (signupMode && !result.data.session) {
+   message("Conta criada. Confirma o email, se solicitado, e depois inicia sessão.","success");
+   return;
+  }
+  currentUser = result.data.user || result.data.session?.user;
+  if (currentUser) await startApp();
+ } catch (err) {
+  message("Não foi possível iniciar sessão/criar conta: " + err.message,"error");
+ } finally {
+  $("authSubmit").disabled = false;
+ }
+});
+
+async function startApp() {
+ if (!currentUser) return;
+ showApp();
+ clearMessage();
+ status("A sincronizar...");
+ await loadAll();
+ subscribeRealtime();
+}
+
+async function loadAll() {
+ if (!currentUser) return;
+ try {
+  const result = await supabaseClient
+   .from("gastos")
+   .select("id,user_id,data,descricao,categoria,valor,tipo,notas,created_at")
+   .order("data",{ascending:false})
+   .limit(5000);
+  if (result.error) throw result.error;
+
+  movements = (result.data || []).map(r => ({
+   id:r.id,
+   date:r.data,
+   description:r.descricao || "",
+   category:r.categoria || "Outras despesas",
+   amount:Number(r.valor) || 0,
+   type:r.tipo === "receita" ? "receita" : "despesa",
+   notes:r.notas || "",
+   created_at:r.created_at
+  }));
+
+  await loadCategories();
+  renderAll();
+  status("Sincronizado · " + new Date().toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"}));
+ } catch (err) {
+  status("Erro de sincronização");
+  message("Não foi possível sincronizar: " + err.message + ". Confirma a tabela gastos e as respetivas políticas RLS.","error");
+ }
+}
+
+/* Categorias guardadas na tabela categorias_gastos. */
+async function loadCategories() {
+ const result = await supabaseClient
+  .from("categorias_gastos")
+  .select("id,user_id,nome")
+  .order("nome",{ascending:true});
+
+ if (result.error) {
+  throw new Error("Não foi possível carregar categorias. Executa primeiro o SQL de configuração indicado abaixo do código. Detalhe: " + result.error.message);
+ }
+
+ const saved = (result.data || []).map(r => r.nome).filter(Boolean);
+ const used = movements.map(m => m.category).filter(Boolean);
+ const names = [...DEFAULT_CATEGORIES,...used,...saved];
+ categories = [...new Set(names)].sort((a,b)=>a.localeCompare(b,"pt-PT"));
+ 
+ /* Insere categorias predefinidas que ainda não existam na conta. */
+ const existing = new Set(saved.map(x=>x.toLocaleLowerCase("pt-PT")));
+ const missing = DEFAULT_CATEGORIES.filter(name=>!existing.has(name.toLocaleLowerCase("pt-PT")));
+ if (missing.length) {
+  const inserted = await supabaseClient.from("categorias_gastos").insert(
+   missing.map(nome=>({user_id:currentUser.id,nome}))
+  );
+  if (inserted.error && inserted.error.code !== "23505") throw inserted.error;
+ }
+}
+
+function renderAll() {
+ renderCategoryOptions();
+ renderStats();
+ renderMovements();
+ renderCategories();
+}
+function renderCategoryOptions() {
+ const oldCategory = $("category").value;
+ const oldFilter = $("categoryFilter").value;
+ $("category").innerHTML = categories.map(c =>
+  `<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`
+ ).join("");
+ $("categoryFilter").innerHTML = '<option value="">Todas</option>' +
+  categories.map(c=>`<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`).join("");
+ if (categories.includes(oldCategory)) $("category").value=oldCategory;
+ if (categories.includes(oldFilter)) $("categoryFilter").value=oldFilter;
+}
+function renderStats() {
+ const rows = movements.filter(m=>(m.date||"").startsWith(currentMonth()));
+ const income = rows.filter(m=>m.type==="receita").reduce((s,m)=>s+m.amount,0);
+ const expenses = rows.filter(m=>m.type==="despesa").reduce((s,m)=>s+m.amount,0);
+ $("balance").textContent=money(income-expenses);
+ $("expenses").textContent=money(expenses);
+ $("income").textContent=money(income);
+}
+function getFiltered() {
+ const month=$("monthFilter").value;
+ const category=$("categoryFilter").value;
+ const query=$("searchFilter").value.trim().toLocaleLowerCase("pt-PT");
+ return movements.filter(m=>
+  (!month||(m.date||"").startsWith(month)) &&
+  (!category||m.category===category) &&
+  (!query||`${m.description} ${m.notes} ${m.category}`.toLocaleLowerCase("pt-PT").includes(query))
+ ).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+}
+function renderMovements() {
+ const rows=getFiltered();
+ $("count").textContent=`${rows.length} movimento(s)`;
+ $("emptyMovements").classList.toggle("hidden",rows.length!==0);
+ $("movementRows").innerHTML=rows.map(m=>`
+  <tr>
+   <td>${escapeHTML(m.date)}</td>
+   <td><strong>${escapeHTML(m.description)}</strong>${m.notes?`<div class="small">${escapeHTML(m.notes)}</div>`:""}</td>
+   <td>${escapeHTML(m.category)}</td>
+   <td><span class="pill ${m.type==="receita"?"income":""}">${m.type==="receita"?"Receita":"Despesa"}</span></td>
+   <td class="amount">${m.type==="receita"?"+":"−"}${money(m.amount)}</td>
+   <td><div class="rowactions">
+    <button type="button" class="secondary" data-edit="${escapeHTML(m.id)}">Editar</button>
+    <button type="button" class="danger" data-delete="${escapeHTML(m.id)}">Apagar</button>
+   </div></td>
+  </tr>`).join("");
+ $("movementRows").querySelectorAll("[data-edit]").forEach(b=>b.addEventListener("click",()=>editMovement(b.dataset.edit)));
+ $("movementRows").querySelectorAll("[data-delete]").forEach(b=>b.addEventListener("click",()=>deleteMovement(b.dataset.delete)));
+}
+function renderCategories() {
+ $("categoryList").innerHTML=categories.map(c=>`
+  <div class="category-row">
+   <input aria-label="Nome da categoria" data-cat-input="${escapeHTML(c)}" value="${escapeHTML(c)}" maxlength="50">
+   <button type="button" class="secondary" data-cat-save="${escapeHTML(c)}">Guardar</button>
+   <button type="button" class="danger" data-cat-delete="${escapeHTML(c)}">Apagar</button>
+  </div>`).join("");
+ $("categoryList").querySelectorAll("[data-cat-save]").forEach(b=>
+  b.addEventListener("click",()=>renameCategory(b.dataset.catSave,b.parentElement.querySelector("input").value))
+ );
+ $("categoryList").querySelectorAll("[data-cat-delete]").forEach(b=>
+  b.addEventListener("click",()=>deleteCategory(b.dataset.catDelete))
+ );
+}
+
+$("movementForm").addEventListener("submit",async event=>{
+ event.preventDefault();
+ if(!currentUser)return;
+ clearMessage();
+ const id=$("movementId").value;
+ const row={
+  user_id:currentUser.id,
+  data:$("date").value,
+  descricao:$("description").value.trim(),
+  categoria:$("category").value,
+  valor:Number($("amount").value),
+  tipo:$("type").value,
+  notas:$("notes").value.trim()
+ };
+ if(!row.data||!row.descricao||!Number.isFinite(row.valor)||row.valor<=0){
+  message("Preenche a data, descrição e um valor superior a zero.","error");return;
+ }
+ $("saveBtn").disabled=true;
+ try {
+  const result=id
+   ? await supabaseClient.from("gastos").update(row).eq("id",id).eq("user_id",currentUser.id)
+   : await supabaseClient.from("gastos").insert(row);
+  if(result.error)throw result.error;
+  resetMovementForm();
+  await loadAll();
+  message(id?"Movimento atualizado.":"Movimento guardado com sucesso.","success");
+ } catch(err) {
+  message("Erro ao guardar o movimento: "+err.message,"error");
+ } finally {
+  $("saveBtn").disabled=false;
+ }
+});
+
+function editMovement(id) {
+ const m=movements.find(x=>String(x.id)===String(id));
+ if(!m)return;
+ $("movementId").value=m.id;
+ $("type").value=m.type;
+ $("amount").value=m.amount;
+ $("date").value=m.date;
+ $("category").value=m.category;
+ $("description").value=m.description;
+ $("notes").value=m.notes;
+ $("formTitle").textContent="Editar movimento";
+ $("saveBtn").textContent="Guardar alterações";
+ $("cancelEdit").classList.remove("hidden");
+ window.scrollTo({top:0,behavior:"smooth"});
+}
+function resetMovementForm() {
+ $("movementForm").reset();
+ $("movementId").value="";
+ $("date").value=today();
+ $("formTitle").textContent="Adicionar movimento";
+ $("saveBtn").textContent="Guardar movimento";
+ $("cancelEdit").classList.add("hidden");
+}
+$("cancelEdit").addEventListener("click",resetMovementForm);
+
+async function deleteMovement(id) {
+ const m=movements.find(x=>String(x.id)===String(id));
+ if(!m||!confirm(`Apagar «${m.description}»? Esta ação não pode ser desfeita.`))return;
+ try {
+  const result=await supabaseClient.from("gastos").delete().eq("id",id).eq("user_id",currentUser.id);
+  if(result.error)throw result.error;
+  await loadAll();
+  message("Movimento apagado.","success");
+ } catch(err) { message("Não foi possível apagar: "+err.message,"error"); }
+}
+
+$("categoryForm").addEventListener("submit",async event=>{
+ event.preventDefault();
+ const name=$("newCategory").value.trim();
+ if(!name)return;
+ if(categories.some(c=>c.toLocaleLowerCase("pt-PT")===name.toLocaleLowerCase("pt-PT"))){
+  message("Já existe uma categoria com esse nome.","error");return;
+ }
+ try {
+  const result=await supabaseClient.from("categorias_gastos").insert({user_id:currentUser.id,nome:name});
+  if(result.error)throw result.error;
+  $("newCategory").value="";
+  await loadAll();
+  message("Categoria criada e sincronizada.","success");
+ } catch(err) { message("Não foi possível criar a categoria: "+err.message,"error"); }
+});
+
+async function renameCategory(oldName,newName) {
+ newName=newName.trim();
+ if(!newName){message("O nome não pode ficar vazio.","error");return;}
+ if(oldName===newName){message("Não existem alterações a guardar.");return;}
+ if(categories.some(c=>c.toLocaleLowerCase("pt-PT")===newName.toLocaleLowerCase("pt-PT"))){
+  message("Já existe uma categoria com esse nome.","error");return;
+ }
+ if(!confirm(`Alterar «${oldName}» para «${newName}» em todos os movimentos existentes?`))return;
+ try {
+  /* Renomeia a categoria no registo de categorias. */
+  const cat=await supabaseClient.from("categorias_gastos").update({nome:newName})
+   .eq("user_id",currentUser.id).eq("nome",oldName);
+  if(cat.error)throw cat.error;
+
+  /* Atualiza também os movimentos antigos. */
+  const moves=await supabaseClient.from("gastos").update({categoria:newName})
+   .eq("user_id",currentUser.id).eq("categoria",oldName);
+  if(moves.error)throw moves.error;
+
+  await loadAll();
+  message("Categoria e movimentos atualizados.","success");
+ } catch(err) { message("Erro ao alterar a categoria: "+err.message,"error"); }
+}
+
+async function deleteCategory(name) {
+ if(movements.some(m=>m.category===name)){
+  message("Esta categoria tem movimentos associados. Edita primeiro esses movimentos e escolhe outra categoria.","error");return;
+ }
+ if(!confirm(`Apagar a categoria «${name}»?`))return;
+ try {
+  const result=await supabaseClient.from("categorias_gastos").delete()
+   .eq("user_id",currentUser.id).eq("nome",name);
+  if(result.error)throw result.error;
+  await loadAll();
+  message("Categoria apagada.","success");
+ } catch(err) { message("Erro ao apagar a categoria: "+err.message,"error"); }
+}
+
+["monthFilter","categoryFilter","searchFilter"].forEach(id=>
+ $(id).addEventListener("input",renderMovements)
+);
+
+$("exportBtn").addEventListener("click",()=>{
+ const rows=getFiltered();
+ if(!rows.length){message("Não existem movimentos para exportar com estes filtros.");return;}
+ const data=[
+  ["Data","Descrição","Categoria","Tipo","Valor (€)","Notas"],
+  ...rows.map(m=>[m.date,m.description,m.category,m.type,m.amount.toFixed(2).replace(".",","),m.notes])
+ ];
+ const csv="\uFEFF"+data.map(row=>row.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(";")).join("\r\n");
+ const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement("a");
+ a.href=url;a.download=`os-meus-gastos-${today()}.csv`;
+ document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+ message("Exportação iniciada.","success");
+});
+
+function subscribeRealtime() {
+ if(realtimeChannel) supabaseClient.removeChannel(realtimeChannel);
+ realtimeChannel=supabaseClient.channel("gastos-sync-"+currentUser.id)
+  .on("postgres_changes",{
+   event:"*",schema:"public",table:"gastos",filter:"user_id=eq."+currentUser.id
+  },()=>scheduleRefresh())
+  .on("postgres_changes",{
+   event:"*",schema:"public",table:"categorias_gastos",filter:"user_id=eq."+currentUser.id
+  },()=>scheduleRefresh())
+  .subscribe((state)=>{
+   if(state==="SUBSCRIBED")status("Sincronização ativa");
+  });
+}
+function scheduleRefresh() {
+ clearTimeout(refreshTimer);
+ refreshTimer=setTimeout(()=>loadAll(),500);
+}
+
+document.querySelectorAll("[data-tab]").forEach(b=>b.addEventListener("click",()=>{
+ document.querySelectorAll("[data-tab]").forEach(x=>x.classList.toggle("active",x===b));
+ $("movementsTab").classList.toggle("hidden",b.dataset.tab!=="movements");
+ $("categoriesTab").classList.toggle("hidden",b.dataset.tab!=="categories");
+}));
+
+$("logoutBtn").addEventListener("click",async()=>{
+ if(realtimeChannel)await supabaseClient.removeChannel(realtimeChannel);
+ await supabaseClient.auth.signOut();
+ currentUser=null;movements=[];categories=[];
+ showAuth();message("Sessão terminada.","success");
+});
+
+if(initClient()) {
+ supabaseClient.auth.getSession().then(async({data,error})=>{
+  if(error){message(error.message,"error");return;}
+  if(data.session){currentUser=data.session.user;await startApp();}
+  else showAuth();
+ });
+ supabaseClient.auth.onAuthStateChange((event,session)=>{
+  if(event==="SIGNED_OUT"){currentUser=null;showAuth();}
+ });
+}
+</script>
+</body>
+</html>
