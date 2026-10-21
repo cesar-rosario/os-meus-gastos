@@ -208,10 +208,16 @@ function initClient() {
   message("Não foi possível carregar o Supabase. Verifica a ligação à Internet.","error");
   return false;
  }
- if (!SUPABASE_KEY || SUPABASE_KEY.includes("sb_publishable_9WysdEayiy9V5vo3ttoR-g_TCU1YpLY")) {
-  message("Falta configurar SUPABASE_KEY. No Supabase, abre Project Settings > API e copia a chave publicável (publishable key) ou anon key.","error");
+ if (
+  !SUPABASE_KEY ||
+  SUPABASE_KEY === "sb_publishable_9WysdEayiy9V5vo3ttoR-g_TCU1YpLY"
+) {
+  message(
+    "Falta configurar SUPABASE_KEY. Confirma a chave pública do Supabase.",
+    "error"
+  );
   return false;
- }
+}
  try {
   supabaseClient = window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
   return true;
