@@ -55,6 +55,30 @@ nav button span{font-size:20px}nav button.on{color:var(--ac);font-weight:600}
 </head>
 <body>
 <main>
+  
+<section class="card" id="authBox">
+  <h2>☁️ Sincronização</h2>
+  <p id="authStatus" style="font-size:13px;color:var(--mu)">
+    Inicia sessão para sincronizar os teus movimentos.
+  </p>
+
+  <div id="authForm">
+    <label for="authEmail">Email</label>
+    <input id="authEmail" type="email"
+      autocomplete="username" placeholder="O teu email">
+
+    <label for="authPassword">Palavra-passe</label>
+    <input id="authPassword" type="password"
+      autocomplete="current-password" placeholder="Palavra-passe">
+
+    <button class="btn" id="authLogin">Iniciar sessão</button>
+  </div>
+
+  <button class="btn s hide" id="authLogout">
+    Terminar sessão
+  </button>
+</section>
+
 <div class="mnav" id="mnav"><button id="pv" aria-label="Mês anterior">‹</button><b id="mlab"></b><button id="nx" aria-label="Mês seguinte">›</button></div>
 
 <section id="t-mov">
@@ -198,7 +222,7 @@ $('sv').onclick=()=>{
   mon=o.date.slice(0,7);fc='';store();closeSheet();render();
 };
 $('del').onclick=()=>arm($('del'),()=>{D.movs=D.movs.filter(x=>x!==ed);store();closeSheet();render()});
-$('lst').addEventListener('click',e=>{const it=e.target.closest('[data-id]');if(it)openSheet(+it.dataset.id)});
+$('lst').addEventListener('click',e=>{const it=e.target.closest('[data-id]');if(it)openSheet(it.dataset.id)});
 $('fc').onchange=e=>{fc=e.target.value;renderMov()};
 
 // navegação
@@ -238,6 +262,287 @@ $('cur').value=S.cur;$('th').value=S.th;applyTheme();render();
     SUPABASE_KEY
   );
 </script>
+  
+<script>
+(() => {
+  const status = document.getElementById('authStatus');
+  const form = document.getElementById('authForm');
+  const logout = document.getElementById('authLogout');
+  const login = document.getElementById('authLogin');
+  const email = document.getElementById('authEmail');
+  const password = document.getElementById('authPassword');
+
+  let currentUser = null;
+  let channel = null;
+  let busy = false;
+
+  function message(text) {
+    status.textContent = text;
+  }
+
+  function authUI(signedIn) {
+    form.classList.toggle('hide', signedIn);
+    logout.classList.toggle('hide', !signedIn);
+  }
+
+  function fromRow(row) {
+    return {
+      id: row.id,
+      t: row.tipo,
+      v: Number(row.valor),
+      cat: row.categoria || '',
+      date: row.data,
+      note: row.notas || ''
+    };
+  }
+
+  function toRow(move) {
+    return {
+      user_id: currentUser.id,
+      data: move.date,
+      descricao: cat(move.cat).n,
+      categoria: move.cat,
+      valor: move.v,
+      tipo: move.t,
+      notas: move.note || ''
+    };
+  }
+
+  async function getCloudMoves() {
+    const { data, error } = await supabaseClient
+      .from('gastos')
+      .select('*')
+      .order('data', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  async function loadCloud() {
+    if (!currentUser || busy) return;
+    busy = true;
+    message('A carregar os movimentos…');
+
+    try {
+      let rows = await getCloudMoves();
+
+      // Importar os movimentos locais apenas se a conta
+      // ainda não tiver movimentos guardados na nuvem.
+      if (rows.length === 0 && D.movs.length > 0) {
+        const localMoves = D.movs.map(m => toRow(m));
+        const { error } = await supabaseClient
+          .from('gastos')
+          .insert(localMoves);
+
+        if (error) throw error;
+        rows = await getCloudMoves();
+      }
+
+      D.movs = rows.map(fromRow);
+      store();
+      render();
+
+      message('Sincronizado com a tua conta.');
+    } catch (error) {
+      console.error(error);
+      message('Erro ao carregar dados: ' + error.message);
+    } finally {
+      busy = false;
+    }
+  }
+
+  login.onclick = async () => {
+    login.disabled = true;
+    message('A iniciar sessão…');
+
+    try {
+      const { data, error } = await supabaseClient.auth.signInWithPassword({
+        email: email.value.trim(),
+        password: password.value
+      });
+
+      if (error) throw error;
+      currentUser = data.user;
+      authUI(true);
+      await loadCloud();
+      password.value = '';
+      setupRealtime();
+    } catch (error) {
+      message('Não foi possível iniciar sessão: ' + error.message);
+    } finally {
+      login.disabled = false;
+    }
+  };
+
+  logout.onclick = async () => {
+    if (channel) {
+      await supabaseClient.removeChannel(channel);
+      channel = null;
+    }
+
+    const { error } = await supabaseClient.auth.signOut();
+
+    if (error) {
+      message('Erro ao terminar sessão: ' + error.message);
+      return;
+    }
+
+    currentUser = null;
+    D.movs = [];
+    store();
+    render();
+    authUI(false);
+    message('Sessão terminada.');
+  };
+
+  async function saveMove(move) {
+    const row = toRow(move);
+    let result;
+
+    if (typeof move.id === 'string') {
+      result = await supabaseClient
+        .from('gastos')
+        .update(row)
+        .eq('id', move.id)
+        .select()
+        .single();
+    } else {
+      result = await supabaseClient
+        .from('gastos')
+        .insert(row)
+        .select()
+        .single();
+    }
+
+    if (result.error) throw result.error;
+    return fromRow(result.data);
+  }
+
+  // Substitui a gravação local pelo armazenamento na nuvem.
+  $('sv').onclick = async () => {
+    if (!currentUser) {
+      message('Inicia sessão antes de guardar movimentos.');
+      return;
+    }
+
+    const v = parseFloat($('v').value.replace(',', '.'));
+
+    if (!(v > 0)) {
+      $('v').focus();
+      return;
+    }
+
+    if (busy) return;
+    busy = true;
+    $('sv').disabled = true;
+
+    try {
+      const move = {
+        id: ed ? ed.id : null,
+        t: tp,
+        v: Math.round(v * 100) / 100,
+        cat: $('ct').value,
+        date: $('dt').value || today(),
+        note: $('nt').value.trim()
+      };
+
+      const saved = await saveMove(move);
+
+      if (ed) {
+        D.movs = D.movs.map(m => m.id === ed.id ? saved : m);
+      } else {
+        D.movs.push(saved);
+      }
+
+      mon = saved.date.slice(0, 7);
+      fc = '';
+      store();
+      closeSheet();
+      render();
+      message('Movimento guardado na nuvem.');
+    } catch (error) {
+      console.error(error);
+      message('Erro ao guardar: ' + error.message);
+    } finally {
+      busy = false;
+      $('sv').disabled = false;
+    }
+  };
+
+  // Apagar também na base de dados.
+  $('del').onclick = async () => {
+    if (!ed || !currentUser || busy) return;
+
+    arm($('del'), async () => {
+      busy = true;
+      $('del').disabled = true;
+
+      try {
+        if (typeof ed.id === 'string') {
+          const { error } = await supabaseClient
+            .from('gastos')
+            .delete()
+            .eq('id', ed.id);
+
+          if (error) throw error;
+        }
+
+        D.movs = D.movs.filter(m => m.id !== ed.id);
+        store();
+        closeSheet();
+        render();
+        message('Movimento apagado.');
+      } catch (error) {
+        message('Erro ao apagar: ' + error.message);
+      } finally {
+        busy = false;
+        $('del').disabled = false;
+      }
+    });
+  };
+
+  // Atualizar os dados quando outro dispositivo os altera.
+  function setupRealtime() {
+    if (channel) supabaseClient.removeChannel(channel);
+
+    channel = supabaseClient
+      .channel('gastos-sincronizados')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'gastos',
+        filter: 'user_id=eq.' + currentUser.id
+      }, () => {
+        if (!busy) loadCloud();
+      })
+      .subscribe();
+  }
+
+  // Recuperar a sessão se já existir.
+  (async () => {
+    try {
+      const { data, error } = await supabaseClient.auth.getSession();
+      if (error) throw error;
+
+      if (data.session) {
+        currentUser = data.session.user;
+        authUI(true);
+        await loadCloud();
+        setupRealtime();
+      } else {
+        authUI(false);
+        message('Inicia sessão para sincronizar os teus movimentos.');
+      }
+    } catch (error) {
+      console.error(error);
+      message('Erro de ligação: ' + error.message);
+    }
+  })();
+})();
+</script>
+</body>
+</html>
+
   
 
 </body>
