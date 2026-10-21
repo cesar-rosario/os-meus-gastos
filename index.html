@@ -69,6 +69,7 @@ textarea{min-height:60px;resize:vertical}
 .empty{text-align:center;padding:22px;color:var(--muted)}
 footer{text-align:center;color:var(--muted);font-size:12px;padding:10px}
 @media(max-width:560px){.grid{grid-template-columns:1fr 1fr}.grid .stat:first-child{grid-column:1/-1}.formgrid,.filters{grid-template-columns:1fr}.full{grid-column:auto}.actions button{flex:1}}
+.tabs{overflow-x:auto}.tabs button{flex:none;padding:10px 13px}
 </style>
 </head>
 <body>
@@ -87,13 +88,13 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:10px}
   <div class="field"><label for="password">Palavra-passe</label><input id="password" type="password" autocomplete="current-password" minlength="6" required></div>
   <button id="authSubmit" type="submit" style="width:100%">Iniciar sessão</button>
  </form>
- <div class="actions"><button id="toggleAuth" class="secondary" type="button">Criar conta</button></div>
+ <div class="actions"><button id="toggleAuth" class="secondary hidden" type="button">Criar conta</button></div>
 </section>
 
 <main id="appView" class="hidden">
  <div class="monthbar"><button id="prevM" class="secondary" aria-label="Mês anterior">‹</button><b id="monthLabel"></b><button id="nextM" class="secondary" aria-label="Mês seguinte">›</button></div>
  <div class="grid">
-  <div class="stat"><small>Saldo</small><strong id="balance">0,00 €</strong><small id="prevBal"></small></div>
+  <div class="stat"><small>Saldo</small><strong id="balance">0,00 €</strong><small id="prevBal"></small><small id="provBal"></small></div>
   <div class="stat"><small>Despesas</small><strong id="expenses">0,00 €</strong></div>
   <div class="stat"><small>Receitas</small><strong id="income">0,00 €</strong></div>
  </div>
@@ -101,7 +102,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:10px}
   <button class="active" data-tab="movements">Movimentos</button>
   <button data-tab="summary">Resumo</button>
   <button data-tab="categories">Categorias</button>
-  <button data-tab="recurring">Recorrentes</button>
+  <button data-tab="recurring">Recorrentes</button><button data-tab="accounts">Contas</button><button data-tab="goals">Metas</button><button data-tab="import">Importar</button>
  </div>
 
  <section id="movementsTab">
@@ -114,6 +115,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:10px}
      <div class="field"><label for="amount">Valor (€)</label><input id="amount" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="0,00" required></div>
      <div class="field"><label for="date">Data</label><input id="date" type="date" required></div>
      <div class="field"><label for="category">Categoria</label><select id="category" required></select></div>
+     <div class="field"><label for="acc">Conta</label><select id="acc"></select></div><div class="field"><label for="who">Quem</label><select id="who"></select></div>
      <div class="field full"><label for="description">Descrição</label><input id="description" list="descList" maxlength="150" placeholder="Ex.: supermercado" required><datalist id="descList"></datalist></div>
      <div class="field full chk" id="repeatBox"><input type="checkbox" id="repeat"><label for="repeat">Repetir todos os meses</label></div>
      <div class="field full"><label for="notes">Notas (opcional)</label><textarea id="notes" maxlength="1000"></textarea></div>
@@ -125,7 +127,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:10px}
    <div style="display:flex;justify-content:space-between;align-items:center"><h2>Histórico</h2><span id="count" class="small"></span></div>
    <div class="filters">
     <div class="field"><label for="categoryFilter">Categoria</label><select id="categoryFilter"><option value="">Todas</option></select></div>
-    <div class="field"><label for="searchFilter">Pesquisar</label><input id="searchFilter" type="search" placeholder="Descrição ou notas"></div>
+    <div class="field"><label for="whoFilter">Quem</label><select id="whoFilter"></select></div><div class="field"><label for="searchFilter">Pesquisar</label><input id="searchFilter" type="search" placeholder="Descrição ou notas"></div>
    </div>
    <div id="movementRows"></div><p class="small">Toca num movimento para editar; desliza para a esquerda para apagar.</p>
    <div id="emptyMovements" class="empty hidden">Sem movimentos neste mês.</div>
@@ -133,7 +135,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:10px}
  </section>
 
  <section id="summaryTab" class="hidden">
-  <div class="card"><h2>Para onde vai o dinheiro</h2><div id="budgetTotal"></div><div id="breakdown"></div><p class="small">Toca numa categoria para ver os movimentos. A seta compara com o mês anterior.</p></div>
+  <div class="card"><h2>Para onde vai o dinheiro</h2><div id="budgetTotal"></div><div id="breakdown"></div><h2 style="margin-top:16px">Por pessoa</h2><div id="byWho"></div><p class="small">Toca numa categoria para ver os movimentos. A seta compara com o mês anterior.</p></div>
   <div class="card"><h2>Últimos 6 meses</h2><div id="history"></div></div>
  </section>
 
@@ -156,6 +158,36 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:10px}
    </div><div class="actions"><button type="submit">Adicionar</button></div></form></div>
   <div class="card"><h2>Recorrentes</h2><p class="small">São registados automaticamente, no dia indicado de cada mês, quando abres a app (num dos telemóveis).</p><div id="recList"></div></div>
  </section>
+<section id="accountsTab" class="hidden">
+  <div class="card"><h2>Contas</h2><div id="accList"></div><div class="actions"><button id="namesBtn" class="secondary" type="button">Nomes das pessoas</button></div></div>
+  <div class="card"><h2>Nova conta</h2><form id="accForm"><div class="formgrid">
+   <div class="field"><label for="aName">Nome</label><input id="aName" maxlength="50" placeholder="Ex.: Conta à ordem" required></div>
+   <div class="field"><label for="aType">Tipo</label><select id="aType"><option value="corrente">Conta à ordem</option><option value="poupanca">Poupança</option><option value="investimento">Investimento (ações/ETFs)</option><option value="dinheiro">Dinheiro</option></select></div>
+   <div class="field full"><label for="aBal">Saldo atual (€)</label><input id="aBal" type="number" step="0.01" value="0"></div>
+  </div><div class="actions"><button type="submit">Criar conta</button></div></form></div>
+  <div class="card"><h2>Transferir entre contas</h2><p class="small">Não conta como despesa nem receita.</p><form id="tfForm"><div class="formgrid">
+   <div class="field"><label for="tFrom">De</label><select id="tFrom"></select></div><div class="field"><label for="tTo">Para</label><select id="tTo"></select></div>
+   <div class="field"><label for="tAmt">Valor (€)</label><input id="tAmt" type="number" inputmode="decimal" min="0.01" step="0.01" required></div><div class="field"><label for="tDate">Data</label><input id="tDate" type="date" required></div>
+   <div class="field full"><label for="tDesc">Descrição (opcional)</label><input id="tDesc" maxlength="100" placeholder="Ex.: Reforço fundo de emergência"></div>
+  </div><div class="actions"><button type="submit">Transferir</button></div></form></div>
+ </section>
+ <section id="goalsTab" class="hidden">
+  <div class="card"><h2>Metas de poupança</h2><div id="goalList"></div></div>
+  <div class="card"><h2>Nova meta</h2><div class="chips"><button type="button" class="secondary" data-gn="Fundo de emergência">Fundo de emergência</button><button type="button" class="secondary" data-gn="Ações / ETFs">Ações / ETFs</button></div>
+   <form id="goalForm"><div class="formgrid"><div class="field full"><label for="gName">Nome</label><input id="gName" maxlength="60" required></div>
+   <div class="field"><label for="gTarget">Objetivo (€)</label><input id="gTarget" type="number" inputmode="decimal" min="1" step="0.01" required></div><div class="field"><label for="gMonthly">Poupar por mês (€)</label><input id="gMonthly" type="number" inputmode="decimal" min="0" step="0.01" value="0"></div>
+   <div class="field full"><label for="gAcc">Conta associada</label><select id="gAcc"></select></div></div>
+   <p class="small">O progresso é o saldo da conta associada: reforça-a com transferências. Em ações/ETFs conta o valor investido, não o valor de mercado.</p><div class="actions"><button type="submit">Criar meta</button></div></form></div>
+  <div class="card"><h2>Despesas anuais</h2><p class="small">Seguros, IMI, IUC, férias… divididos por 12 para reservares todos os meses.</p><div id="annList"></div>
+   <form id="annForm"><div class="formgrid"><div class="field full"><label for="nDesc">Descrição</label><input id="nDesc" maxlength="80" placeholder="Ex.: Seguro do carro" required></div>
+   <div class="field"><label for="nVal">Valor anual (€)</label><input id="nVal" type="number" inputmode="decimal" min="1" step="0.01" required></div><div class="field"><label for="nMes">Mês de pagamento</label><select id="nMes"></select></div></div>
+   <div class="actions"><button type="submit">Adicionar</button></div></form></div>
+ </section>
+ <section id="importTab" class="hidden"><div class="card"><h2>Importar extrato do banco</h2>
+  <p class="small">Carrega o CSV do banco. Movimentos já existentes são ignorados e as categorias são sugeridas a partir do que já registaste; podes corrigir antes de importar.</p>
+  <div class="field"><label for="iAcc">Importar para a conta</label><select id="iAcc"></select></div>
+  <div class="field" style="margin-top:10px"><label for="iFile">Ficheiro CSV</label><input id="iFile" type="file" accept=".csv,text/csv,text/plain"></div>
+  <div id="impSum" class="small" style="margin:10px 0"></div><div id="impList"></div><div class="actions"><button id="impGo" class="hidden">Importar selecionados</button></div></div></section>
 </main>
 <footer>Dados sincronizados com Supabase</footer>
 </div>
@@ -172,7 +204,7 @@ const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 const lc=s=>String(s).toLocaleLowerCase("pt-PT");
 const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
 
-let sb=null,user=null,movements=[],categories=[],budgets={},bRows={},recs=[],recWarned=false,budgetWarned=false,channel=null,signup=false,timer=null;
+let sb=null,user=null,movements=[],categories=[],budgets={},bRows={},recs=[],accounts=[],goals=[],annuals=[],allMov=[],imp=[],extraWarned=false,recWarned=false,budgetWarned=false,channel=null,signup=false,timer=null;
 let month=today().slice(0,7);
 
 function msg(t,k=""){$("message").textContent=t;$("message").className="notice"+(k?" "+k:"")}
@@ -221,10 +253,10 @@ async function startApp(){
 async function loadAll(){
  if(!user)return;
  try{
-  const r=await sb.from("gastos").select("id,user_id,data,descricao,categoria,valor,tipo,notas,created_at").order("data",{ascending:false}).limit(5000);
+  const r=await sb.from("gastos").select("*").order("data",{ascending:false}).limit(5000);
   if(r.error)throw r.error;
-  movements=(r.data||[]).map(x=>({id:x.id,date:x.data,description:x.descricao||"",category:x.categoria||"Outras despesas",amount:Number(x.valor)||0,type:x.tipo==="receita"?"receita":"despesa",notes:x.notas||""}));
-  await loadCategories();await loadBudgets();await loadRecs();
+  allMov=(r.data||[]).map(x=>({conta:x.conta_id,quem:x.quem,transf:x.transf_id,id:x.id,date:x.data,description:x.descricao||"",category:x.categoria||"Outras despesas",amount:Number(x.valor)||0,type:x.tipo==="receita"?"receita":"despesa",notes:x.notas||""}));movements=allMov.filter(m=>!m.transf);
+  await loadCategories();await loadBudgets();await loadRecs();await loadExtra();
   renderAll();
   status("Sincronizado · "+new Date().toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"}));
  }catch(err){status("Erro de sincronização");msg("Não foi possível sincronizar: "+err.message,"error")}
@@ -295,7 +327,112 @@ function renderChips(){
  $("chips").querySelectorAll("[data-chip]").forEach(b=>b.onclick=()=>{if(!$("movementId").value)fillFrom(movements.find(m=>lc(m.description)===b.dataset.chip),true)});
  $("descList").innerHTML=[...new Set(movements.map(m=>m.description))].slice(0,200).map(d=>`<option value="${esc(d)}">`).join("");
 }
-function renderAll(){calcBudgets();renderMonth();renderOptions();renderStats();renderMovements();renderSummary();renderCategories();renderRecs();renderChips()}
+async function loadExtra(){
+ const q=t=>sb.from(t).select("*").order("created_at");
+ const [a,g,n]=await Promise.all([q("contas_gastos"),q("metas_gastos"),q("anuais_gastos")]);
+ if((a.error||g.error||n.error)&&!extraWarned){extraWarned=true;msg("Contas, metas ou anuais indisponíveis: falta executar o SQL no Supabase.","error")}
+ accounts=a.data||[];goals=g.data||[];annuals=n.data||[];
+}
+const TIPOS={corrente:"Conta à ordem",poupanca:"Poupança",investimento:"Investimento",dinheiro:"Dinheiro"};
+const pessoas=()=>(store.get("pessoas")||"César,Esposa").split(",").map(x=>x.trim()).filter(Boolean);
+const defAcc=()=>(accounts.find(a=>a.tipo==="corrente")||{}).id;
+const bal=a=>Number(a.saldo_inicial)+allMov.filter(m=>(m.conta||defAcc())===a.id).reduce((t,m)=>t+(m.type==="receita"?m.amount:-m.amount),0);
+const uid=()=>crypto.randomUUID?crypto.randomUUID():"xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==="x"?r:r&3|8).toString(16)});
+function tfRows(date,desc,val,from,to,who){const b={user_id:user.id,data:date,descricao:desc,categoria:"Transferência",valor:val,notas:"",quem:who||null,transf_id:uid()};return[{...b,tipo:"despesa",conta_id:from},{...b,tipo:"receita",conta_id:to}]}
+async function ins(tb,row){const r=await sb.from(tb).insert(Array.isArray(row)?row:{user_id:user.id,...row});if(r.error){msg("Erro: "+r.error.message,"error");return false}await loadAll();return true}
+async function del(tb,id,t){if(!confirm(`Apagar «${t}»?`))return;const r=await sb.from(tb).delete().eq("id",id);if(r.error)msg(r.error.message,"error");else await loadAll()}
+function renderPeople(){
+ const P=pessoas(),ov=$("whoFilter").value,ow=$("who").value||store.get("eu")||"",oa=$("acc").value||store.get("acc")||defAcc()||"";
+ const po=P.map(x=>`<option>${esc(x)}</option>`).join(""),ao=accounts.map(a=>`<option value="${a.id}">${esc(a.nome)}</option>`).join("");
+ $("who").innerHTML='<option value="">—</option>'+po;$("who").value=P.includes(ow)?ow:"";
+ $("whoFilter").innerHTML='<option value="">Todos</option>'+po;$("whoFilter").value=ov;
+ $("acc").innerHTML='<option value="">(sem conta)</option>'+ao;$("acc").value=accounts.some(a=>a.id===oa)?oa:"";
+ const iv=$("iAcc").value;$("iAcc").innerHTML=ao||'<option value="">(sem conta)</option>';if(accounts.some(a=>a.id===iv))$("iAcc").value=iv;
+ $("tFrom").innerHTML=$("tTo").innerHTML=$("gAcc").innerHTML=ao;
+ if(!$("nMes").options.length)$("nMes").innerHTML=[...Array(12)].map((_,i)=>`<option value="${i+1}">${new Date(2026,i,1).toLocaleDateString("pt-PT",{month:"long"})}</option>`).join("");
+ if(!$("tDate").value)$("tDate").value=today();
+}
+function renderAccounts(){
+ $("accList").innerHTML=accounts.length?accounts.map(a=>`<div class="mv"><div class="l"><strong>${esc(a.nome)}</strong><span class="small">${TIPOS[a.tipo]||a.tipo}</span></div><div class="r"><b class="${bal(a)<0?"neg":""}">${money(bal(a))}</b><button class="ghost" data-ab="${a.id}">Acertar saldo</button><button class="danger" data-ad="${a.id}">Apagar</button></div></div>`).join("")+`<div class="mv"><strong>Total</strong><b>${money(accounts.reduce((t,a)=>t+bal(a),0))}</b></div>`:'<div class="empty">Cria primeiro a tua conta à ordem.</div>';
+ const L=$("accList");
+ L.querySelectorAll("[data-ab]").forEach(b=>b.onclick=async()=>{const a=accounts.find(x=>x.id===b.dataset.ab),v=prompt("Saldo real atual (€):",bal(a).toFixed(2));if(v===null)return;const t=Number(v.replace(",","."));if(!Number.isFinite(t))return;const r=await sb.from("contas_gastos").update({saldo_inicial:Math.round((Number(a.saldo_inicial)+t-bal(a))*100)/100}).eq("id",a.id);if(r.error)msg(r.error.message,"error");else await loadAll()});
+ L.querySelectorAll("[data-ad]").forEach(b=>b.onclick=()=>del("contas_gastos",b.dataset.ad,accounts.find(x=>x.id===b.dataset.ad).nome));
+}
+function renderGoals(){
+ $("goalList").innerHTML=goals.length?goals.map(g=>{
+  const a=accounts.find(x=>x.id===g.conta_id),cur=a?bal(a):0,obj=Number(g.objetivo),pct=Math.min(100,Math.max(0,cur/obj*100)),mens=Number(g.mensal)||0;
+  const mm=a?allMov.filter(m=>m.transf&&m.type==="receita"&&(m.conta||defAcc())===a.id&&inMonth(m,month)).reduce((t,m)=>t+m.amount,0):0;
+  return `<div class="cat" style="cursor:default"><div class="t"><span><b>${esc(g.nome)}</b> <span class="small">${a?esc(a.nome):"sem conta"}</span></span><span><b>${money(cur)}</b> <span class="small">de ${money(obj)} · ${Math.round(pct)}%</span></span></div><div class="bar"><i style="width:${pct}%;background:var(--green)"></i></div><span class="small">${mens?`Este mês: ${money(mm)} de ${money(mens)} · `:""}${cur>=obj?"Meta atingida!":"Faltam "+money(obj-cur)}</span> <button class="danger" style="padding:2px 8px;font-size:12px" data-gd="${g.id}">Apagar</button></div>`}).join(""):'<div class="empty">Ainda não há metas.</div>';
+ $("goalList").querySelectorAll("[data-gd]").forEach(b=>b.onclick=()=>del("metas_gastos",b.dataset.gd,goals.find(x=>x.id===b.dataset.gd).nome));
+}
+function renderAnn(){
+ const cm=new Date().getMonth()+1;
+ $("annList").innerHTML=annuals.length?annuals.map(x=>{const k=((cm-x.mes+11)%12)+1,v=Number(x.valor);
+  return `<div class="mv"><div class="l"><strong>${esc(x.descricao)}</strong><span class="small">${money(v)} em ${new Date(2026,x.mes-1,1).toLocaleDateString("pt-PT",{month:"long"})} · reservar ${money(v/12)}/mês</span></div><div class="r"><b>${money(v/12*k)}</b><span class="small">${k===12?"paga-se este mês":"reservado"}</span><button class="danger" data-nd="${x.id}">Apagar</button></div></div>`}).join("")+`<div class="mv"><strong>Reservar por mês</strong><b>${money(annuals.reduce((t,x)=>t+Number(x.valor)/12,0))}</b></div>`:'<div class="empty">Sem despesas anuais.</div>';
+ $("annList").querySelectorAll("[data-nd]").forEach(b=>b.onclick=()=>del("anuais_gastos",b.dataset.nd,annuals.find(x=>x.id===b.dataset.nd).descricao));
+}
+/* ---- Importar extrato ---- */
+const numPT=v=>{v=String(v||"").trim();return v?Number(v.replace(/\./g,"").replace(",",".")):0};
+const normD=d=>lc(d).replace(/\d[\dx]*/g,"").replace(/\s+/g," ").trim();
+const RULES=[[/lidl|continente|pingo doce|minipreco|auchan|padaria|pastelaria|talho|intermarche|mercearia|supermerc/,"Alimentação"],[/via verde|galp|prio|posico|combu|repsol|\bcp\b|uber|bolt|estacion|parque/,"Transportes"],[/saude|farmac|clinica|hospital|terapia|dentist|optica/,"Saúde"],[/edp|endesa|\bnos\b|meo|vodafone|nowo|epal|agua|seguro|camara|municip|iuc|imi\b/,"Serviços"],[/restaur|cafe|cervej|cinema|spotify|netflix|trekkin|ginasio/,"Lazer"]];
+function suggest(d,type){
+ const hit=movements.find(m=>m.type===type&&normD(m.description)===normD(d));if(hit)return hit.category;
+ if(/trading ?212|xtb|degiro|\betf|binance|trade republic/.test(lc(d))){const a=accounts.find(x=>x.tipo==="investimento");if(a)return"t:"+a.id}
+ const c=type==="receita"?(/gnr|vencimento|salario|ordenado/.test(lc(d))?"Salário":"Outras receitas"):((RULES.find(r=>r[0].test(lc(d)))||[])[1]||"Outras despesas");
+ return categories.find(x=>lc(x)===lc(c))||(type==="receita"?"Outras receitas":"Outras despesas");
+}
+async function parseCSV(file){
+ const buf=await file.arrayBuffer();let t;
+ try{t=new TextDecoder("utf-8",{fatal:true}).decode(buf)}catch(e){t=new TextDecoder("iso-8859-1").decode(buf)}
+ const out=[];
+ for(const line of t.split(/\r?\n/)){
+  const c=line.split(";"),m=/^(\d{2})-(\d{2})-(\d{4})$/.exec((c[0]||"").trim());if(!m)continue;
+  const deb=numPT(c[3]),cre=numPT(c[4]);if(!deb&&!cre)continue;
+  out.push({date:`${m[3]}-${m[2]}-${m[1]}`,desc:(c[2]||"").trim().replace(/\s+/g," "),amount:cre||deb,type:cre?"receita":"despesa"});
+ }
+ return out;
+}
+const ikey=(d,t,a,ty)=>`${d}|${lc(t)}|${a.toFixed(2)}|${ty}`;
+function renderImp(){
+ const ai=$("iAcc").value,opts=sel=>categories.map(c=>`<option value="${esc(c)}"${c===sel?" selected":""}>${esc(c)}</option>`).join("")+accounts.filter(a=>a.id!==ai).map(a=>`<option value="t:${a.id}"${"t:"+a.id===sel?" selected":""}>↔ ${esc(a.nome)}</option>`).join("");
+ $("impSum").textContent=imp.length?`${imp.length} movimentos no ficheiro · ${imp.filter(r=>r.dup).length} já existem (ignorados)`:"";
+ $("impList").innerHTML=imp.map((r,i)=>`<div class="mv"><div class="l"><label><input type="checkbox" data-i="${i}" ${r.inc?"checked":""} style="width:auto"> <strong>${esc(r.desc)}</strong></label><span class="small">${r.date}${r.dup?" · já existe":""}</span><select data-c="${i}">${opts(r.cat)}</select></div><div class="r"><b class="${r.type==="receita"?"pos":""}">${r.type==="receita"?"+":"−"}${money(r.amount)}</b></div></div>`).join("");
+ $("impGo").classList.toggle("hidden",!imp.length);
+}
+async function readImp(){
+ const f=$("iFile").files[0];if(!f)return;
+ const rows=await parseCSV(f),acc=$("iAcc").value||"",have={};
+ if(!rows.length){msg("Não encontrei movimentos neste ficheiro.","error");return}
+ allMov.filter(m=>(m.conta||defAcc()||"")===acc).forEach(m=>{const k=ikey(m.date,m.description,m.amount,m.type);have[k]=(have[k]||0)+1});
+ imp=rows.map(r=>{const k=ikey(r.date,r.desc,r.amount,r.type),dup=have[k]>0;if(dup)have[k]--;return{...r,dup,inc:!dup,cat:suggest(r.desc,r.type)}});
+ renderImp();
+}
+$("iFile").onchange=readImp;$("iAcc").onchange=readImp;
+$("impList").onchange=e=>{const t=e.target;if(t.dataset.i!==undefined)imp[t.dataset.i].inc=t.checked;if(t.dataset.c!==undefined)imp[t.dataset.c].cat=t.value};
+$("impGo").onclick=async()=>{
+ const acc=$("iAcc").value||null,who=$("who").value||null,rows=[];
+ imp.filter(r=>r.inc).forEach(r=>{
+  if(r.cat.startsWith("t:")){const o=r.cat.slice(2);rows.push(...(r.type==="despesa"?tfRows(r.date,r.desc,r.amount,acc,o,who):tfRows(r.date,r.desc,r.amount,o,acc,who)))}
+  else rows.push({user_id:user.id,data:r.date,descricao:r.desc,categoria:r.cat,valor:r.amount,tipo:r.type,notas:"Importado",conta_id:acc,quem:who});
+ });
+ if(!rows.length){msg("Nada selecionado para importar.");return}
+ $("impGo").disabled=true;
+ try{for(let i=0;i<rows.length;i+=200){const r=await sb.from("gastos").insert(rows.slice(i,i+200));if(r.error)throw r.error}
+  const n=rows.length;imp=[];$("iFile").value="";renderImp();await loadAll();msg(`${n} movimentos importados.`,"success")}
+ catch(err){msg("Erro ao importar: "+err.message,"error")}
+ finally{$("impGo").disabled=false}
+};
+$("accForm").addEventListener("submit",async e=>{e.preventDefault();if(await ins("contas_gastos",{nome:$("aName").value.trim(),tipo:$("aType").value,saldo_inicial:Number($("aBal").value)||0})){$("accForm").reset();msg("Conta criada.","success")}});
+$("tfForm").addEventListener("submit",async e=>{
+ e.preventDefault();const a=$("tFrom").value,b=$("tTo").value,v=Number($("tAmt").value);
+ if(!a||!b||a===b||!(v>0)){msg("Escolhe duas contas diferentes e um valor.","error");return}
+ if(await ins("gastos",tfRows($("tDate").value,$("tDesc").value.trim()||"Transferência",v,a,b,$("who").value))){$("tAmt").value="";$("tDesc").value="";msg("Transferência registada.","success")}
+});
+$("goalForm").addEventListener("submit",async e=>{e.preventDefault();if(await ins("metas_gastos",{nome:$("gName").value.trim(),objetivo:Number($("gTarget").value),mensal:Number($("gMonthly").value)||0,conta_id:$("gAcc").value||null})){$("goalForm").reset();msg("Meta criada.","success")}});
+document.querySelectorAll("[data-gn]").forEach(b=>b.onclick=()=>{$("gName").value=b.dataset.gn;$("gTarget").focus()});
+$("annForm").addEventListener("submit",async e=>{e.preventDefault();if(await ins("anuais_gastos",{descricao:$("nDesc").value.trim(),valor:Number($("nVal").value),mes:Number($("nMes").value)})){$("annForm").reset();msg("Despesa anual adicionada.","success")}});
+$("namesBtn").onclick=()=>{const v=prompt("Nomes das pessoas, separados por vírgula (têm de ser iguais nos dois telemóveis):",pessoas().join(", "));if(v&&v.trim()){store.set("pessoas",v);renderPeople()}};
+function renderAll(){calcBudgets();renderMonth();renderOptions();renderStats();renderMovements();renderSummary();renderCategories();renderRecs();renderChips();renderPeople();renderAccounts();renderGoals();renderAnn()}
 function renderMonth(){$("monthLabel").textContent=monthName(month);const s=$("budgetScope"),v=s.value||"*";s.innerHTML=`<option value="*">Todos os meses</option><option value="m">Só ${monthName(month)}</option>`;s.value=v}
 function renderOptions(){
  const oc=$("category").value||store.get("lastCat"),of=$("categoryFilter").value;
@@ -308,14 +445,14 @@ function renderOptions(){
 function renderStats(){
  const rows=movements.filter(m=>inMonth(m,month));
  const inc=sum(rows,"receita"),exp=sum(rows,"despesa"),bal=inc-exp;
- $("balance").textContent=money(bal);$("balance").className=bal<0?"neg":"";
+ $("balance").textContent=money(bal);$("balance").className=bal<0?"neg":"";const pv=annuals.reduce((a,x)=>a+Number(x.valor)/12,0);$("provBal").textContent=pv?`Depois de reservar ${money(pv)}/mês (anuais): ${money(bal-pv)}`:"";
  $("expenses").textContent=money(exp);$("income").textContent=money(inc);
  const pe=sum(movements.filter(m=>inMonth(m,shiftMonth(month,-1))),"despesa");
  $("prevBal").textContent=pe?`Mês anterior: ${money(pe)} em despesas`:"";
 }
 function getFiltered(){
- const c=$("categoryFilter").value,q=lc($("searchFilter").value.trim());
- return movements.filter(m=>inMonth(m,month)&&(!c||m.category===c)&&(!q||lc(`${m.description} ${m.notes} ${m.category}`).includes(q)))
+ const w=$("whoFilter").value,c=$("categoryFilter").value,q=lc($("searchFilter").value.trim());
+ return movements.filter(m=>inMonth(m,month)&&(!c||m.category===c)&&(!w||m.quem===w)&&(!q||lc(`${m.description} ${m.notes} ${m.category}`).includes(q)))
   .sort((a,b)=>(b.date||"").localeCompare(a.date||""));
 }
 function renderMovements(){
@@ -325,7 +462,7 @@ function renderMovements(){
  let last="",html="";
  for(const m of rows){
   if(m.date!==last){last=m.date;html+=`<div class="day">${esc(new Date(m.date+"T12:00").toLocaleDateString("pt-PT",{weekday:"short",day:"numeric",month:"short"}))}</div>`}
-  html+=`<div class="mv" data-edit="${esc(m.id)}"><div class="l"><strong>${esc(m.description)}</strong><span class="small">${esc(m.category)}${m.notes?" · "+esc(m.notes):""}</span></div>
+  html+=`<div class="mv" data-edit="${esc(m.id)}"><div class="l"><strong>${esc(m.description)}</strong><span class="small">${esc(m.category)}${m.quem?" · "+esc(m.quem):""}${m.notes?" · "+esc(m.notes):""}</span></div>
   <div class="r"><b class="${m.type==="receita"?"pos":""}">${m.type==="receita"?"+":"−"}${money(m.amount)}</b>
   <button class="ghost" data-dup="${esc(m.id)}">Duplicar</button></div></div>`;
  }
@@ -352,6 +489,8 @@ function renderSummary(){
   <div class="bar"><i style="width:${bd?Math.min(100,v/bd*100):(list[0][1]?Math.max(2,v/list[0][1]*100):0)}%;${bd&&v>bd?"background:var(--red)":bd&&v>=bd*.8?"background:#e0a000":""}"></i></div>${bd?`<span class="small ${v>bd?"neg":""}">${v>bd?"Excedido em "+money(v-bd):"Restam "+money(bd-v)}</span> `:""}${arrow}</div>`}).join(""):'<div class="empty">Sem despesas neste mês.</div>';
  const tb=Object.values(budgets).reduce((a,b)=>a+b,0),ts=Object.keys(budgets).reduce((x,k)=>x+(c[k]||0),0);
  $("budgetTotal").innerHTML=tb?`<div class="cat" style="cursor:default"><div class="t"><span><b>Orçamento total</b></span><span><b>${money(ts)}</b> <span class="small">de ${money(tb)}</span></span></div><div class="bar"><i style="width:${Math.min(100,ts/tb*100)}%;${ts>tb?"background:var(--red)":""}"></i></div><span class="small ${ts>tb?"neg":""}">${ts>tb?"Excedido em "+money(ts-tb):"Restam "+money(tb-ts)}</span></div><hr style="border:0;border-top:1px solid var(--line);margin:0 0 12px">`:"";
+ const bw={};cur.forEach(m=>{const k=m.quem||"Sem pessoa";bw[k]=(bw[k]||0)+m.amount});
+ $("byWho").innerHTML=Object.entries(bw).map(([k,v])=>`<div class="t" style="margin-bottom:6px"><span>${esc(k)}</span><b>${money(v)}</b></div>`).join("")||'<div class="empty">Sem despesas neste mês.</div>';
  $("breakdown").querySelectorAll("[data-c]").forEach(el=>el.onclick=()=>{$("categoryFilter").value=el.dataset.c;renderMovements();openTab("movements")});
  const months=[];for(let i=5;i>=0;i--)months.push(shiftMonth(month,-i));
  const data=months.map(m=>({m,e:sum(movements.filter(x=>inMonth(x,m)),"despesa"),r:sum(movements.filter(x=>inMonth(x,m)),"receita")}));
@@ -369,13 +508,13 @@ function renderCategories(){
 $("movementForm").addEventListener("submit",async e=>{
  e.preventDefault();if(!user)return;clearMsg();
  const id=$("movementId").value;
- const row={user_id:user.id,data:$("date").value,descricao:$("description").value.trim(),categoria:$("category").value,valor:Number($("amount").value),tipo:$("type").value,notas:$("notes").value.trim()};
+ const row={user_id:user.id,data:$("date").value,descricao:$("description").value.trim(),categoria:$("category").value,valor:Number($("amount").value),tipo:$("type").value,notas:$("notes").value.trim(),conta_id:$("acc").value||null,quem:$("who").value||null};
  if(!row.data||!row.descricao||!Number.isFinite(row.valor)||row.valor<=0){msg("Preenche a data, a descrição e um valor superior a zero.","error");return}
  $("saveBtn").disabled=true;
  try{
   const r=id?await sb.from("gastos").update(row).eq("id",id).eq("user_id",user.id):await sb.from("gastos").insert(row);
   if(r.error)throw r.error;
-  store.set("lastCat",row.categoria);
+  store.set("lastCat",row.categoria);store.set("eu",row.quem||"");store.set("acc",row.conta_id||"");
   if(!id&&$("repeat").checked){const rr=await sb.from("recorrentes_gastos").insert({user_id:user.id,descricao:row.descricao,categoria:row.categoria,valor:row.valor,tipo:row.tipo,dia:Number(row.data.slice(8)),ativo:true,ultimo_mes:row.data.slice(0,7)});if(rr.error)throw rr.error}
   month=row.data.slice(0,7); /* mostra logo o mês do movimento guardado */
   resetForm();await loadAll();
@@ -388,13 +527,13 @@ $("movementForm").addEventListener("submit",async e=>{
 function editMovement(id){
  const m=movements.find(x=>String(x.id)===String(id));if(!m)return;
  $("movementId").value=m.id;$("type").value=m.type;$("amount").value=m.amount;$("date").value=m.date;
- $("category").value=m.category;$("description").value=m.description;$("notes").value=m.notes;
+ $("category").value=m.category;$("description").value=m.description;$("notes").value=m.notes;$("acc").value=m.conta||"";$("who").value=m.quem||"";
  $("formTitle").textContent="Editar movimento";$("saveBtn").textContent="Guardar alterações";
  $("cancelEdit").classList.remove("hidden");$("delEdit").classList.remove("hidden");$("repeatBox").classList.add("hidden");window.scrollTo({top:0,behavior:"smooth"});
 }
 function resetForm(){
  const c=$("category").value;
- $("movementForm").reset();$("movementId").value="";$("date").value=today();
+ $("movementForm").reset();$("who").value=store.get("eu")||"";$("acc").value=store.get("acc")||"";$("movementId").value="";$("date").value=today();
  if(categories.includes(c))$("category").value=c;
  $("formTitle").textContent="Adicionar movimento";$("saveBtn").textContent="Guardar movimento";$("cancelEdit").classList.add("hidden");$("delEdit").classList.add("hidden");$("repeatBox").classList.remove("hidden");
 }
@@ -462,13 +601,13 @@ async function deleteCategory(name){
  catch(err){msg("Erro ao apagar: "+err.message,"error")}
 }
 
-["categoryFilter","searchFilter"].forEach(id=>$(id).addEventListener("input",renderMovements));
+["categoryFilter","whoFilter","searchFilter"].forEach(id=>$(id).addEventListener("input",renderMovements));
 $("prevM").onclick=()=>{month=shiftMonth(month,-1);renderAll()};
 $("nextM").onclick=()=>{month=shiftMonth(month,1);renderAll()};
 
 function openTab(t){
  document.querySelectorAll("[data-tab]").forEach(x=>x.classList.toggle("active",x.dataset.tab===t));
- ["movements","summary","categories","recurring"].forEach(n=>$(n+"Tab").classList.toggle("hidden",n!==t));
+ ["movements","summary","categories","recurring","accounts","goals","import"].forEach(n=>$(n+"Tab").classList.toggle("hidden",n!==t));
 }
 document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>openTab(b.dataset.tab));
 
@@ -490,6 +629,9 @@ function subscribe(){
   .on("postgres_changes",{...f,table:"categorias_gastos",filter:"user_id=eq."+user.id},refresh)
   .on("postgres_changes",{...f,table:"orcamentos_gastos",filter:"user_id=eq."+user.id},refresh)
   .on("postgres_changes",{...f,table:"recorrentes_gastos",filter:"user_id=eq."+user.id},refresh)
+  .on("postgres_changes",{...f,table:"contas_gastos",filter:"user_id=eq."+user.id},refresh)
+  .on("postgres_changes",{...f,table:"metas_gastos",filter:"user_id=eq."+user.id},refresh)
+  .on("postgres_changes",{...f,table:"anuais_gastos",filter:"user_id=eq."+user.id},refresh)
   .subscribe(s=>{if(s==="SUBSCRIBED")status("Sincronização ativa")});
 }
 function refresh(){clearTimeout(timer);timer=setTimeout(loadAll,500)}
@@ -511,3 +653,4 @@ if(initClient()){
 </script>
 </body>
 </html>
+
