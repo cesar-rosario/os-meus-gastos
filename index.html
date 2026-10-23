@@ -196,7 +196,9 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:10px}
   <div class="card"><h2>Património total</h2><p class="small">Regista o valor atual das tuas poupanças e investimentos. Os valores são sincronizados entre os teus dispositivos.</p><div id="assetChart" class="asset-chart"><div class="asset-chart-label"><div class="small">Total</div><div id="assetTotal">0,00 €</div></div></div><div id="assetLegend" class="asset-legend"></div></div>
   <div class="card"><h2>Adicionar ativo</h2><form id="assetForm"><input type="hidden" id="assetId"><div class="formgrid">
    <div class="field"><label for="assetType">Tipo</label><select id="assetType"><option>Poupanças</option><option>PPR</option><option>Ações</option><option>ETFs</option><option>Criptomoedas</option><option>Outro</option></select></div>
-   <div class="field"><label for="assetValue">Valor atual (€)</label><input id="assetValue" type="number" min="0" step="0.01" inputmode="decimal" required></div>
+   <div class="field"><label for="assetValue">Valor atual</label><input id="assetValue" type="number" min="0" step="0.01" inputmode="decimal" required></div>
+   <div class="field"><label for="assetCurrency">Moeda</label><select id="assetCurrency"><option value="EUR">EUR — Euro</option><option value="USD">USD — Dólar americano</option><option value="GBP">GBP — Libra esterlina</option><option value="CHF">CHF — Franco suíço</option><option value="CAD">CAD — Dólar canadiano</option><option value="BRL">BRL — Real brasileiro</option><option value="Other">Outra</option></select></div>
+   <div class="field"><label for="assetRate">Taxa de conversão para EUR</label><input id="assetRate" type="number" min="0.000001" step="0.000001" value="1" required><span class="small">Quantos euros vale 1 unidade da moeda. Para EUR, mantém 1.</span></div>
    <div class="field full"><label for="assetName">Nome / instituição</label><input id="assetName" maxlength="100" placeholder="Ex.: Fundo de emergência, PPR Fidelidade, VWCE" required></div>
    <div class="field full"><label for="assetNotes">Notas (opcional)</label><textarea id="assetNotes" maxlength="500"></textarea></div>
   </div><div class="actions"><button id="assetSave" type="submit">Guardar ativo</button><button id="assetCancel" type="button" class="secondary hidden">Cancelar edição</button></div></form></div>
@@ -366,7 +368,7 @@ async function loadExtra(){
 async function loadAssets(){
  const r=await sb.from("patrimonio_gastos").select("*").order("created_at",{ascending:false});
  if(r.error){assets=[];if(!assetWarned){assetWarned=true;msg("O separador Património precisa da tabela patrimonio_gastos. Executa o SQL fornecido para o ativar.","error")}return}
- assets=(r.data||[]).map(x=>({id:x.id,tipo:x.tipo||"Outro",nome:x.nome||"",valor:Number(x.valor)||0,notas:x.notas||""}));
+ assets=(r.data||[]).map(x=>({id:x.id,tipo:x.tipo||"Outro",nome:x.nome||"",valor:Number(x.valor)||0,moeda:x.moeda||"EUR",taxa_eur:Number(x.taxa_eur)||1,notas:x.notas||""}));
 }
 let assetWarned=false;
 const TIPOS={corrente:"Conta à ordem",poupanca:"Poupança",investimento:"Investimento",dinheiro:"Dinheiro"};
@@ -439,10 +441,21 @@ const cleanDesc=d=>lc(d).normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace
 const ikey=(d,t,a,ty)=>`${d}|${cleanDesc(t)}|${Number(a).toFixed(2)}|${ty}`;
 function renderImp(){
  const ai=$("iAcc").value,opts=sel=>categories.map(c=>`<option value="${esc(c)}"${c===sel?" selected":""}>${esc(c)}</option>`).join("")+accounts.filter(a=>a.id!==ai).map(a=>`<option value="t:${a.id}"${"t:"+a.id===sel?" selected":""}>↔ ${esc(a.nome)}</option>`).join("");
- $("impSum").textContent=imp.length?`${imp.length} movimentos no ficheiro · ${imp.filter(r=>r.dup).length} já existem (ignorados)`:"";
- $("impList").innerHTML=imp.map((r,i)=>`<div class="mv"><div class="l"><label><input type="checkbox" data-i="${i}" ${r.inc?"checked":""} style="width:auto"> <strong>${esc(r.desc)}</strong></label><span class="small">${r.date}${r.dup?" · já existe — será ignorado":r.possible?" · possível duplicado (mesma data, valor e tipo) — confirma antes de importar":""}</span><select data-c="${i}">${opts(r.cat)}</select></div><div class="r"><b class="${r.type==="receita"?"pos":""}">${r.type==="receita"?"+":"−"}${money(r.amount)}</b></div></div>`).join("");
- $("impGo").classList.toggle("hidden",!imp.length);
+ $("impSum").textContent=imp.length?`${imp.length} movimentos no ficheiro · ${imp.filter(r=>r.dup).length} já existem · ${imp.filter(r=>r.added).length} adicionados` : "";
+ $("impList").innerHTML=imp.map((r,i)=>`<div class="mv"><div class="l"><strong>${esc(r.desc)}</strong><span class="small">${r.date}${r.dup?" · já existe":r.possible?" · possível duplicado — confirma antes de adicionar":""}${r.added?" · adicionado":""}</span><div style="margin-top:6px"><select data-c="${i}" ${r.added||r.dup?"disabled":""}>${opts(r.cat)}</select></div></div><div class="r"><b class="${r.type==="receita"?"pos":""}">${r.type==="receita"?"+":"−"}${money(r.amount)}</b><button type="button" class="${r.added||r.dup?"secondary":""}" data-add-one="${i}" ${r.added||r.dup?"disabled":""}>${r.added?"Adicionado":r.dup?"Já existe":"Adicionar"}</button></div></div>`).join("");
+ $("impGo").classList.toggle("hidden",!imp.some(r=>r.inc&&!r.added&&!r.dup));
+ $("impList").querySelectorAll("[data-add-one]").forEach(b=>b.onclick=async()=>{
+  const i=Number(b.dataset.addOne),r=imp[i];if(!r||r.added||r.dup)return;
+  if(r.possible&&!confirm("Este movimento tem a mesma data, valor e tipo de outro movimento. Queres adicioná-lo mesmo assim?"))return;
+  const who=$("who").value||null;let rows;
+  if(r.cat.startsWith("t:")){const dest=r.cat.slice(2);rows=r.type==="despesa"?tfRows(r.date,r.desc,r.amount,null,dest,who):tfRows(r.date,r.desc,r.amount,dest,null,who)}
+  else rows=[{user_id:user.id,data:r.date,descricao:r.desc,categoria:r.cat,valor:r.amount,tipo:r.type,notas:"Importado",conta_id:null,quem:who}];
+  b.disabled=true;const res=await sb.from("gastos").insert(rows);
+  if(res.error){msg("Não foi possível adicionar este movimento: "+res.error.message,"error");b.disabled=false;return}
+  r.added=true;r.inc=false;await loadAll();renderImp();msg("Movimento adicionado.","success");
+ });
 }
+
 async function readImp(){
  const f=$("iFile").files[0];if(!f)return;
  const rows=await parseCSV(f),acc=$("iAcc").value||"",have={};
@@ -451,7 +464,7 @@ async function readImp(){
  const used={};
  imp=rows.map(r=>{const k=ikey(r.date,r.desc,r.amount,r.type);let dup=have[k]>0,possible=false;if(dup){have[k]--}else{possible=allMov.some(m=>m.date===r.date&&Math.abs(Number(m.amount)-Number(r.amount))<0.005&&m.type===r.type);}
  const seen=used[k]||0;used[k]=seen+1;if(seen>0){dup=true}
- return{...r,dup,possible,inc:!dup&&!possible,cat:suggest(r.desc,r.type)}});
+ return{...r,dup,possible,added:false,inc:!dup&&!possible,cat:suggest(r.desc,r.type)}});
  renderImp();
 }
 $("iFile").onchange=readImp;$("iAcc").onchange=readImp;
@@ -531,18 +544,20 @@ function renderMovements(){
 }
 function renderAssets(){
  const colors=["#1769e0","#14804a","#e0a020","#8b5cf6","#e05d44","#0f9fa8","#64748b","#d946ef"];
- const total=assets.reduce((n,a)=>n+a.valor,0);$("assetTotal").textContent=money(total);
- const grouped={};assets.forEach(a=>grouped[a.tipo]=(grouped[a.tipo]||0)+a.valor);
+ const eurValue=a=>a.valor*(a.moeda==="EUR"?1:(Number(a.taxa_eur)||1));
+ const total=assets.reduce((n,a)=>n+eurValue(a),0);$("assetTotal").textContent=money(total);
+ const grouped={};assets.forEach(a=>grouped[a.tipo]=(grouped[a.tipo]||0)+eurValue(a));
  let angle=0;const stops=[];Object.entries(grouped).forEach(([tipo,v],i)=>{const next=total?angle+v/total*360:angle;stops.push(`${colors[i%colors.length]} ${angle}deg ${next}deg`);angle=next});
  $("assetChart").style.background=total?`conic-gradient(${stops.join(",")})`:"var(--line)";
  $("assetLegend").innerHTML=Object.entries(grouped).sort((a,b)=>b[1]-a[1]).map(([tipo,v])=>{const i=Object.keys(grouped).indexOf(tipo);return `<div class="asset-legend-row"><span class="asset-legend-name"><i class="asset-dot" style="background:${colors[i%colors.length]}"></i>${esc(tipo)}</span><span><b>${money(v)}</b> <span class="small">${total?(v/total*100).toLocaleString("pt-PT",{maximumFractionDigits:1}):0}%</span></span></div>`}).join("")||'<div class="empty">Ainda não registaste poupanças ou investimentos.</div>';
- $("assetList").innerHTML=assets.map(a=>`<div class="mv"><div class="l"><strong>${esc(a.nome)}</strong><span class="small">${esc(a.tipo)}${a.notas?" · "+esc(a.notas):""}</span></div><div class="r"><b>${money(a.valor)}</b><button class="secondary" data-asset-edit="${a.id}">Editar</button> <button class="danger" data-asset-del="${a.id}">Apagar</button></div></div>`).join("")||'<div class="empty">Sem ativos registados.</div>';
- $("assetList").querySelectorAll("[data-asset-edit]").forEach(b=>b.onclick=()=>{const a=assets.find(x=>String(x.id)===b.dataset.assetEdit);if(!a)return;$("assetId").value=a.id;$("assetType").value=a.tipo;$("assetName").value=a.nome;$("assetValue").value=a.valor;$("assetNotes").value=a.notas;$("assetSave").textContent="Guardar alterações";$("assetCancel").classList.remove("hidden");$("assetForm").scrollIntoView({behavior:"smooth",block:"start"})});
+ $("assetList").innerHTML=assets.map(a=>`<div class="mv"><div class="l"><strong>${esc(a.nome)}</strong><span class="small">${esc(a.tipo)} · ${Number(a.valor).toLocaleString("pt-PT",{minimumFractionDigits:2,maximumFractionDigits:2})} ${esc(a.moeda||"EUR")}${a.moeda&&a.moeda!=="EUR"?" · ≈ "+money(eurValue(a)):""}${a.notas?" · "+esc(a.notas):""}</span></div><div class="r"><b>${money(eurValue(a))}</b><button class="secondary" data-asset-edit="${a.id}">Editar</button> <button class="danger" data-asset-del="${a.id}">Apagar</button></div></div>`).join("")||'<div class="empty">Sem ativos registados.</div>';
+ $("assetList").querySelectorAll("[data-asset-edit]").forEach(b=>b.onclick=()=>{const a=assets.find(x=>String(x.id)===b.dataset.assetEdit);if(!a)return;$("assetId").value=a.id;$("assetType").value=a.tipo;$("assetName").value=a.nome;$("assetValue").value=a.valor;$("assetCurrency").value=a.moeda||"EUR";$("assetRate").value=a.moeda==="EUR"?1:(a.taxa_eur||1);$("assetNotes").value=a.notas;$("assetSave").textContent="Guardar alterações";$("assetCancel").classList.remove("hidden");$("assetForm").scrollIntoView({behavior:"smooth",block:"start"})});
  $("assetList").querySelectorAll("[data-asset-del]").forEach(b=>b.onclick=async()=>{const a=assets.find(x=>String(x.id)===b.dataset.assetDel);if(!a||!confirm(`Apagar «${a.nome}» do património?`))return;const r=await sb.from("patrimonio_gastos").delete().eq("id",a.id).eq("user_id",user.id);if(r.error){msg("Erro ao apagar ativo: "+r.error.message,"error");return}await loadAll();msg("Ativo apagado.","success")});
 }
-$("assetForm").addEventListener("submit",async e=>{e.preventDefault();const id=$("assetId").value,row={user_id:user.id,tipo:$("assetType").value,nome:$("assetName").value.trim(),valor:Number($("assetValue").value),notas:$("assetNotes").value.trim()};if(!row.nome||!Number.isFinite(row.valor)||row.valor<0){msg("Confirma o nome e o valor do ativo.","error");return}const r=id?await sb.from("patrimonio_gastos").update(row).eq("id",id).eq("user_id",user.id):await sb.from("patrimonio_gastos").insert(row);if(r.error){msg("Não foi possível guardar o ativo: "+r.error.message,"error");return}resetAssetForm();await loadAll();msg(id?"Ativo atualizado.":"Ativo adicionado.","success")});
+$("assetForm").addEventListener("submit",async e=>{e.preventDefault();const id=$("assetId").value,moeda=$("assetCurrency").value,taxa=moeda==="EUR"?1:Number($("assetRate").value),row={user_id:user.id,tipo:$("assetType").value,nome:$("assetName").value.trim(),valor:Number($("assetValue").value),moeda,taxa_eur:taxa,notas:$("assetNotes").value.trim()};if(!row.nome||!Number.isFinite(row.valor)||row.valor<0||!Number.isFinite(taxa)||taxa<=0){msg("Confirma o nome e o valor do ativo.","error");return}const r=id?await sb.from("patrimonio_gastos").update(row).eq("id",id).eq("user_id",user.id):await sb.from("patrimonio_gastos").insert(row);if(r.error){msg("Não foi possível guardar o ativo: "+r.error.message,"error");return}resetAssetForm();await loadAll();msg(id?"Ativo atualizado.":"Ativo adicionado.","success")});
 function resetAssetForm(){$("assetForm").reset();$("assetId").value="";$("assetSave").textContent="Guardar ativo";$("assetCancel").classList.add("hidden")}
 $("assetCancel").onclick=resetAssetForm;
+$("assetCurrency").addEventListener("change",()=>{if($("assetCurrency").value==="EUR"){$("assetRate").value="1";$("assetRate").disabled=true}else{$("assetRate").disabled=false;if(Number($("assetRate").value)===1)$("assetRate").value=""}});
 
 function renderSummary(){
  const cur=movements.filter(m=>inMonth(m,month)&&m.type==="despesa"),prev=movements.filter(m=>inMonth(m,shiftMonth(month,-1))&&m.type==="despesa");
@@ -730,6 +745,5 @@ if(initClient()){
 </script>
 </body>
 </html>
-
 
 
