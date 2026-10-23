@@ -197,6 +197,11 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:10px}
 <footer>Dados sincronizados com Supabase</footer>
 </div>
 
+<div id="legacyCompat" hidden aria-hidden="true">
+ <select id="acc"><option value="">(sem conta)</option></select>
+ <div id="annList"></div>
+ <form id="annForm"><input id="nDesc" type="text"><input id="nVal" type="number"><select id="nMes"></select></form>
+</div>
 <script>
 const SUPABASE_URL="https://gydouittbuvlhgptkdkp.supabase.co";
 const SUPABASE_KEY="sb_publishable_9WysdEayiy9V5vo3ttoR-g_TCU1YpLY";
@@ -678,4 +683,5 @@ if(initClient()){
 </script>
 </body>
 </html>
+
 
