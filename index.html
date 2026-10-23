@@ -68,6 +68,9 @@ textarea{min-height:60px;resize:vertical}
 .category-row input:first-child{flex:1;min-width:120px}
 .category-row input[type=number]{width:112px;flex:none}
 .empty{text-align:center;padding:22px;color:var(--muted)}
+.asset-chart{width:190px;height:190px;border-radius:50%;margin:8px auto 18px;position:relative;display:grid;place-items:center}
+.asset-chart:after{content:"";position:absolute;width:112px;height:112px;border-radius:50%;background:var(--card)}
+.asset-chart-label{position:relative;z-index:1;text-align:center;font-weight:750}.asset-legend{display:grid;gap:7px}.asset-legend-row{display:flex;align-items:center;gap:8px;justify-content:space-between}.asset-dot{width:11px;height:11px;border-radius:3px;display:inline-block;flex:none}.asset-legend-name{display:flex;align-items:center;gap:7px;min-width:0}
 footer{text-align:center;color:var(--muted);font-size:12px;padding:10px}
 @media(max-width:560px){.grid{grid-template-columns:1fr 1fr}.grid .stat:first-child{grid-column:auto}.formgrid,.filters{grid-template-columns:1fr}.full{grid-column:auto}.actions button{flex:1}}
 [data-tab="accounts"],[data-tab="goals"],#accountsTab,#goalsTab{display:none!important}
@@ -108,6 +111,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:10px}
   <button data-tab="recurring">Recorrentes</button>
   <button data-tab="categories">Categorias</button>
   <button data-tab="import">Importar</button>
+  <button data-tab="patrimonio">Património</button>
  </div>
  <section id="homeTab"><div class="card"><h2>Contas a pagar</h2><p class="small">Despesas recorrentes e anuais ainda não assinaladas como pagas neste ciclo (dia 21 a dia 20).</p><div id="dueList"></div></div></section>
 
@@ -188,10 +192,20 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:10px}
    <p class="small">O progresso é o saldo da conta associada: reforça-a com transferências. Em ações/ETFs conta o valor investido, não o valor de mercado.</p><div class="actions"><button type="submit">Criar meta</button></div></form></div>
 
  </section>
+ <section id="patrimonioTab" class="hidden">
+  <div class="card"><h2>Património total</h2><p class="small">Regista o valor atual das tuas poupanças e investimentos. Os valores são sincronizados entre os teus dispositivos.</p><div id="assetChart" class="asset-chart"><div class="asset-chart-label"><div class="small">Total</div><div id="assetTotal">0,00 €</div></div></div><div id="assetLegend" class="asset-legend"></div></div>
+  <div class="card"><h2>Adicionar ativo</h2><form id="assetForm"><input type="hidden" id="assetId"><div class="formgrid">
+   <div class="field"><label for="assetType">Tipo</label><select id="assetType"><option>Poupanças</option><option>PPR</option><option>Ações</option><option>ETFs</option><option>Criptomoedas</option><option>Outro</option></select></div>
+   <div class="field"><label for="assetValue">Valor atual (€)</label><input id="assetValue" type="number" min="0" step="0.01" inputmode="decimal" required></div>
+   <div class="field full"><label for="assetName">Nome / instituição</label><input id="assetName" maxlength="100" placeholder="Ex.: Fundo de emergência, PPR Fidelidade, VWCE" required></div>
+   <div class="field full"><label for="assetNotes">Notas (opcional)</label><textarea id="assetNotes" maxlength="500"></textarea></div>
+  </div><div class="actions"><button id="assetSave" type="submit">Guardar ativo</button><button id="assetCancel" type="button" class="secondary hidden">Cancelar edição</button></div></form></div>
+  <div class="card"><h2>Ativos registados</h2><div id="assetList"></div></div>
+ </section>
  <section id="importTab" class="hidden"><div class="card"><h2>Importar extrato do banco</h2>
-  <p class="small">Carrega o CSV ou Excel do banco. Os movimentos são comparados com os já registados (data, descrição, valor e tipo); duplicados são assinalados e ignorados. Podes rever e categorizar cada linha antes de importar.</p>
+  <p class="small">Carrega um CSV ou Excel do banco. A app compara com os movimentos já registados manualmente e com duplicados dentro do próprio ficheiro. Correspondências exatas são ignoradas; movimentos com a mesma data, valor e tipo mas descrição diferente são assinalados como possíveis duplicados para confirmares antes de importar.</p>
   <div class="field"><label for="iAcc">Importar para a conta</label><select id="iAcc"></select></div>
-  <div class="field" style="margin-top:10px"><label for="iFile">Ficheiro CSV</label><input id="iFile" type="file" accept=".csv,.xlsx,.xls,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"></div>
+  <div class="field" style="margin-top:10px"><label for="iFile">Ficheiro CSV ou Excel</label><input id="iFile" type="file" accept=".csv,.xlsx,.xls,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"></div>
   <div id="impSum" class="small" style="margin:10px 0"></div><div id="impList"></div><div class="actions"><button id="impGo" class="hidden">Importar selecionados</button></div></div></section>
 </main>
 <footer>Dados sincronizados com Supabase</footer>
@@ -214,14 +228,14 @@ const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 const lc=s=>String(s).toLocaleLowerCase("pt-PT");
 const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
 
-let sb=null,user=null,movements=[],categories=[],budgets={},bRows={},recs=[],accounts=[],goals=[],annuals=[],allMov=[],imp=[],extraWarned=false,recWarned=false,budgetWarned=false,channel=null,signup=false,timer=null;
+let sb=null,user=null,movements=[],categories=[],budgets={},bRows={},recs=[],accounts=[],goals=[],annuals=[],assets=[],allMov=[],imp=[],extraWarned=false,recWarned=false,budgetWarned=false,channel=null,signup=false,timer=null;
 let month=currentCycle();
 
 function msg(t,k=""){$("message").textContent=t;$("message").className="notice"+(k?" "+k:"")}
 function clearMsg(){$("message").classList.add("hidden")}
 function status(t){$("syncStatus").textContent=t}
 function shiftMonth(m,d){const [y,mo]=m.split("-").map(Number);const dt=new Date(y,mo-1+d,1);return `${dt.getFullYear()}-${pad(dt.getMonth()+1)}`}
-function monthName(m,short){const [y,mo]=m.split("-").map(Number);return (short?new Date(y,mo-1,1).toLocaleDateString("pt-PT",{month:"short",year:"numeric"}):`${new Date(y,mo-1,1).toLocaleDateString("pt-PT",{month:"long",year:"numeric"})} (21–20)`.replace(" (21–20)"," · 21 a 20"))}
+function monthName(m,short){const [y,mo]=m.split("-").map(Number);if(short)return new Date(y,mo-1,1).toLocaleDateString("pt-PT",{month:"short",year:"numeric"});const end=new Date(y,mo-1,1),start=new Date(y,mo-2,1);const startName=start.toLocaleDateString("pt-PT",{month:"long",year:"numeric"});const endName=end.toLocaleDateString("pt-PT",{month:"long"});return `${startName} · 21 a 20 de ${endName.charAt(0).toUpperCase()+endName.slice(1)}`}
 function cycleKey(date){const d=String(date||"");if(!/^\d{4}-\d{2}-\d{2}$/.test(d))return "";const dt=new Date(d+"T12:00:00");if(dt.getDate()>=21)dt.setMonth(dt.getMonth()+1);return `${dt.getFullYear()}-${pad(dt.getMonth()+1)}`}
 const inMonth=(m,mm)=>cycleKey(m.date)===mm;
 function currentCycle(){const d=today();return cycleKey(d)}
@@ -272,7 +286,7 @@ async function loadAll(){
   const r=await sb.from("gastos").select("*").order("data",{ascending:false}).limit(5000);
   if(r.error)throw r.error;
   allMov=(r.data||[]).map(x=>({conta:x.conta_id,quem:x.quem,transf:x.transf_id,id:x.id,date:x.data,description:x.descricao||"",category:x.categoria||"Outras despesas",amount:Number(x.valor)||0,type:x.tipo==="receita"?"receita":"despesa",notes:x.notas||""}));movements=allMov.filter(m=>!m.transf);
-  await loadCategories();await loadBudgets();await loadRecs();await loadExtra();
+  await loadCategories();await loadBudgets();await loadRecs();await loadExtra();await loadAssets();
   renderAll();
   status("Sincronizado · "+new Date().toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"}));
  }catch(err){status("Erro de sincronização");msg("Não foi possível sincronizar: "+err.message,"error")}
@@ -349,6 +363,12 @@ async function loadExtra(){
  if((a.error||g.error||n.error)&&!extraWarned){extraWarned=true;msg("Contas, metas ou anuais indisponíveis: falta executar o SQL no Supabase.","error")}
  accounts=a.data||[];goals=g.data||[];annuals=n.data||[];
 }
+async function loadAssets(){
+ const r=await sb.from("patrimonio_gastos").select("*").order("created_at",{ascending:false});
+ if(r.error){assets=[];if(!assetWarned){assetWarned=true;msg("O separador Património precisa da tabela patrimonio_gastos. Executa o SQL fornecido para o ativar.","error")}return}
+ assets=(r.data||[]).map(x=>({id:x.id,tipo:x.tipo||"Outro",nome:x.nome||"",valor:Number(x.valor)||0,notas:x.notas||""}));
+}
+let assetWarned=false;
 const TIPOS={corrente:"Conta à ordem",poupanca:"Poupança",investimento:"Investimento",dinheiro:"Dinheiro"};
 const pessoas=()=>["César","Rafaela","Gonçalo"];
 const defAcc=()=>(accounts.find(a=>a.tipo==="corrente")||{}).id;
@@ -398,21 +418,29 @@ function suggest(d,type){
  return categories.find(x=>lc(x)===lc(c))||(type==="receita"?"Outras receitas":"Outras despesas");
 }
 async function parseCSV(file){
- const buf=await file.arrayBuffer();let t;
- try{t=new TextDecoder("utf-8",{fatal:true}).decode(buf)}catch(e){t=new TextDecoder("iso-8859-1").decode(buf)}
+ const buf=await file.arrayBuffer();let matrix=[];
+ const isExcel=/\.(xlsx|xls)$/i.test(file.name);
+ if(isExcel){if(!window.XLSX)throw new Error("Não foi possível carregar o leitor de Excel.");const wb=XLSX.read(buf,{type:"array",cellDates:true});const ws=wb.Sheets[wb.SheetNames[0]];matrix=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:""});}
+ else {let t;try{t=new TextDecoder("utf-8",{fatal:true}).decode(buf)}catch(e){t=new TextDecoder("iso-8859-1").decode(buf)}matrix=t.split(/\r?\n/).filter(x=>x.trim()).map(line=>{const sep=(line.match(/;/g)||[]).length>=(line.match(/,/g)||[]).length?";":",";return line.split(sep).map(x=>x.trim().replace(/^"|"$/g,"").replace(/""/g,'"'))})}
  const out=[];
- for(const line of t.split(/\r?\n/)){
-  const c=line.split(";"),m=/^(\d{2})-(\d{2})-(\d{4})$/.exec((c[0]||"").trim());if(!m)continue;
-  const deb=numPT(c[3]),cre=numPT(c[4]);if(!deb&&!cre)continue;
-  out.push({date:`${m[3]}-${m[2]}-${m[1]}`,desc:(c[2]||"").trim().replace(/\s+/g," "),amount:cre||deb,type:cre?"receita":"despesa"});
+ for(const c of matrix){
+  const rawDate=String(c[0]??"").trim();let date="";let m=/^(\d{2})[-/](\d{2})[-/](\d{4})$/.exec(rawDate);
+  if(m)date=`${m[3]}-${m[2]}-${m[1]}`;else if(/^\d{4}-\d{2}-\d{2}$/.test(rawDate))date=rawDate;else if(c[0] instanceof Date&&!isNaN(c[0]))date=`${c[0].getFullYear()}-${pad(c[0].getMonth()+1)}-${pad(c[0].getDate())}`;
+  if(!date)continue;
+  const desc=String(c[2]??c[1]??"").trim().replace(/\s+/g," ");
+  let deb=numPT(c[3]),cre=numPT(c[4]);
+  if(!deb&&!cre){const val=numPT(c[3]??c[2]);if(val<0)deb=Math.abs(val);else cre=val}
+  if(!deb&&!cre)continue;
+  out.push({date,desc,amount:Math.round((cre||deb)*100)/100,type:cre?"receita":"despesa"});
  }
  return out;
 }
-const ikey=(d,t,a,ty)=>`${d}|${lc(t)}|${a.toFixed(2)}|${ty}`;
+const cleanDesc=d=>lc(d).normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g," ").trim().replace(/\s+/g," ");
+const ikey=(d,t,a,ty)=>`${d}|${cleanDesc(t)}|${Number(a).toFixed(2)}|${ty}`;
 function renderImp(){
  const ai=$("iAcc").value,opts=sel=>categories.map(c=>`<option value="${esc(c)}"${c===sel?" selected":""}>${esc(c)}</option>`).join("")+accounts.filter(a=>a.id!==ai).map(a=>`<option value="t:${a.id}"${"t:"+a.id===sel?" selected":""}>↔ ${esc(a.nome)}</option>`).join("");
  $("impSum").textContent=imp.length?`${imp.length} movimentos no ficheiro · ${imp.filter(r=>r.dup).length} já existem (ignorados)`:"";
- $("impList").innerHTML=imp.map((r,i)=>`<div class="mv"><div class="l"><label><input type="checkbox" data-i="${i}" ${r.inc?"checked":""} style="width:auto"> <strong>${esc(r.desc)}</strong></label><span class="small">${r.date}${r.dup?" · já existe":""}</span><select data-c="${i}">${opts(r.cat)}</select></div><div class="r"><b class="${r.type==="receita"?"pos":""}">${r.type==="receita"?"+":"−"}${money(r.amount)}</b></div></div>`).join("");
+ $("impList").innerHTML=imp.map((r,i)=>`<div class="mv"><div class="l"><label><input type="checkbox" data-i="${i}" ${r.inc?"checked":""} style="width:auto"> <strong>${esc(r.desc)}</strong></label><span class="small">${r.date}${r.dup?" · já existe — será ignorado":r.possible?" · possível duplicado (mesma data, valor e tipo) — confirma antes de importar":""}</span><select data-c="${i}">${opts(r.cat)}</select></div><div class="r"><b class="${r.type==="receita"?"pos":""}">${r.type==="receita"?"+":"−"}${money(r.amount)}</b></div></div>`).join("");
  $("impGo").classList.toggle("hidden",!imp.length);
 }
 async function readImp(){
@@ -420,7 +448,10 @@ async function readImp(){
  const rows=await parseCSV(f),acc=$("iAcc").value||"",have={};
  if(!rows.length){msg("Não encontrei movimentos neste ficheiro.","error");return}
  allMov.forEach(m=>{const k=ikey(m.date,m.description,m.amount,m.type);have[k]=(have[k]||0)+1});
- imp=rows.map(r=>{const k=ikey(r.date,r.desc,r.amount,r.type),dup=have[k]>0;if(dup)have[k]--;return{...r,dup,inc:!dup,cat:suggest(r.desc,r.type)}});
+ const used={};
+ imp=rows.map(r=>{const k=ikey(r.date,r.desc,r.amount,r.type);let dup=have[k]>0,possible=false;if(dup){have[k]--}else{possible=allMov.some(m=>m.date===r.date&&Math.abs(Number(m.amount)-Number(r.amount))<0.005&&m.type===r.type);}
+ const seen=used[k]||0;used[k]=seen+1;if(seen>0){dup=true}
+ return{...r,dup,possible,inc:!dup&&!possible,cat:suggest(r.desc,r.type)}});
  renderImp();
 }
 $("iFile").onchange=readImp;$("iAcc").onchange=readImp;
@@ -457,7 +488,7 @@ function renderDue(){
  $("dueList").querySelectorAll("[data-paid-id]").forEach(b=>b.onclick=async()=>{const paid=b.dataset.paid==="1",tbl=b.dataset.paidKind==="ann"?"anuais_gastos":"recorrentes_gastos",field=b.dataset.paidKind==="ann"?{pago:!paid}:{pago_mes:paid?null:month};const r=await sb.from(tbl).update(field).eq("id",b.dataset.paidId).eq("user_id",user.id);if(r.error){msg("Não foi possível atualizar o estado de pagamento. Executa primeiro o SQL de atualização indicado.","error");return}await loadAll();});
 }
 
-function renderAll(){calcBudgets();renderMonth();renderOptions();renderStats();renderMovements();renderSummary();renderCategories();renderRecs();renderChips();renderPeople();renderAccounts();renderGoals();renderAnn();renderDue()}
+function renderAll(){calcBudgets();renderMonth();renderOptions();renderStats();renderMovements();renderSummary();renderCategories();renderRecs();renderChips();renderPeople();renderAccounts();renderGoals();renderAnn();renderDue();renderAssets()}
 function renderMonth(){$("monthLabel").textContent=monthName(month);const s=$("budgetScope"),v=s.value||"*";s.innerHTML=`<option value="*">Todos os meses</option><option value="m">Só ${monthName(month)}</option>`;s.value=v}
 function renderOptions(){
  const oc=$("category").value||store.get("lastCat"),of=$("categoryFilter").value;
@@ -498,6 +529,21 @@ function renderMovements(){
  });
  box.querySelectorAll("[data-dup]").forEach(b=>b.onclick=e=>{e.stopPropagation();const m=movements.find(x=>String(x.id)===b.dataset.dup);resetForm();fillFrom(m);$("notes").value=m.notes;window.scrollTo({top:0,behavior:"smooth"});msg("Copiado para o formulário. Ajusta e guarda.")});
 }
+function renderAssets(){
+ const colors=["#1769e0","#14804a","#e0a020","#8b5cf6","#e05d44","#0f9fa8","#64748b","#d946ef"];
+ const total=assets.reduce((n,a)=>n+a.valor,0);$("assetTotal").textContent=money(total);
+ const grouped={};assets.forEach(a=>grouped[a.tipo]=(grouped[a.tipo]||0)+a.valor);
+ let angle=0;const stops=[];Object.entries(grouped).forEach(([tipo,v],i)=>{const next=total?angle+v/total*360:angle;stops.push(`${colors[i%colors.length]} ${angle}deg ${next}deg`);angle=next});
+ $("assetChart").style.background=total?`conic-gradient(${stops.join(",")})`:"var(--line)";
+ $("assetLegend").innerHTML=Object.entries(grouped).sort((a,b)=>b[1]-a[1]).map(([tipo,v])=>{const i=Object.keys(grouped).indexOf(tipo);return `<div class="asset-legend-row"><span class="asset-legend-name"><i class="asset-dot" style="background:${colors[i%colors.length]}"></i>${esc(tipo)}</span><span><b>${money(v)}</b> <span class="small">${total?(v/total*100).toLocaleString("pt-PT",{maximumFractionDigits:1}):0}%</span></span></div>`}).join("")||'<div class="empty">Ainda não registaste poupanças ou investimentos.</div>';
+ $("assetList").innerHTML=assets.map(a=>`<div class="mv"><div class="l"><strong>${esc(a.nome)}</strong><span class="small">${esc(a.tipo)}${a.notas?" · "+esc(a.notas):""}</span></div><div class="r"><b>${money(a.valor)}</b><button class="secondary" data-asset-edit="${a.id}">Editar</button> <button class="danger" data-asset-del="${a.id}">Apagar</button></div></div>`).join("")||'<div class="empty">Sem ativos registados.</div>';
+ $("assetList").querySelectorAll("[data-asset-edit]").forEach(b=>b.onclick=()=>{const a=assets.find(x=>String(x.id)===b.dataset.assetEdit);if(!a)return;$("assetId").value=a.id;$("assetType").value=a.tipo;$("assetName").value=a.nome;$("assetValue").value=a.valor;$("assetNotes").value=a.notas;$("assetSave").textContent="Guardar alterações";$("assetCancel").classList.remove("hidden");$("assetForm").scrollIntoView({behavior:"smooth",block:"start"})});
+ $("assetList").querySelectorAll("[data-asset-del]").forEach(b=>b.onclick=async()=>{const a=assets.find(x=>String(x.id)===b.dataset.assetDel);if(!a||!confirm(`Apagar «${a.nome}» do património?`))return;const r=await sb.from("patrimonio_gastos").delete().eq("id",a.id).eq("user_id",user.id);if(r.error){msg("Erro ao apagar ativo: "+r.error.message,"error");return}await loadAll();msg("Ativo apagado.","success")});
+}
+$("assetForm").addEventListener("submit",async e=>{e.preventDefault();const id=$("assetId").value,row={user_id:user.id,tipo:$("assetType").value,nome:$("assetName").value.trim(),valor:Number($("assetValue").value),notas:$("assetNotes").value.trim()};if(!row.nome||!Number.isFinite(row.valor)||row.valor<0){msg("Confirma o nome e o valor do ativo.","error");return}const r=id?await sb.from("patrimonio_gastos").update(row).eq("id",id).eq("user_id",user.id):await sb.from("patrimonio_gastos").insert(row);if(r.error){msg("Não foi possível guardar o ativo: "+r.error.message,"error");return}resetAssetForm();await loadAll();msg(id?"Ativo atualizado.":"Ativo adicionado.","success")});
+function resetAssetForm(){$("assetForm").reset();$("assetId").value="";$("assetSave").textContent="Guardar ativo";$("assetCancel").classList.add("hidden")}
+$("assetCancel").onclick=resetAssetForm;
+
 function renderSummary(){
  const cur=movements.filter(m=>inMonth(m,month)&&m.type==="despesa"),prev=movements.filter(m=>inMonth(m,shiftMonth(month,-1))&&m.type==="despesa");
  const by=rows=>rows.reduce((o,m)=>(o[m.category]=(o[m.category]||0)+m.amount,o),{});
@@ -627,14 +673,14 @@ $("prevM").onclick=()=>{month=shiftMonth(month,-1);renderAll()};
 $("nextM").onclick=()=>{month=shiftMonth(month,1);renderAll()};
 
 function openTab(t){
- const valid=["home","movements","history","summary","categories","recurring","import"];
+ const valid=["home","movements","history","summary","categories","recurring","import","patrimonio"];
  if(!valid.includes(t))t="home";
  document.querySelectorAll("[data-tab]").forEach(x=>{
   const active=x.dataset.tab===t;
   x.classList.toggle("active",active);
   x.setAttribute("aria-selected",active?"true":"false");
  });
- ["home","movements","history","summary","categories","recurring","accounts","goals","import"].forEach(n=>{
+ ["home","movements","history","summary","categories","recurring","accounts","goals","import","patrimonio"].forEach(n=>{
   const el=$(n+"Tab");
   if(el)el.classList.toggle("hidden",n!==t);
  });
@@ -662,6 +708,7 @@ function subscribe(){
   .on("postgres_changes",{...f,table:"contas_gastos",filter:"user_id=eq."+user.id},refresh)
   .on("postgres_changes",{...f,table:"metas_gastos",filter:"user_id=eq."+user.id},refresh)
   .on("postgres_changes",{...f,table:"anuais_gastos",filter:"user_id=eq."+user.id},refresh)
+  .on("postgres_changes",{...f,table:"patrimonio_gastos",filter:"user_id=eq."+user.id},refresh)
   .subscribe(s=>{if(s==="SUBSCRIBED")status("Sincronização ativa")});
 }
 function refresh(){clearTimeout(timer);timer=setTimeout(loadAll,500)}
@@ -683,5 +730,6 @@ if(initClient()){
 </script>
 </body>
 </html>
+
 
 
