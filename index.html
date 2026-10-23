@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="Orçamento">
 <title>Orçamento familiar</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root{--bg:#f3f5f9;--card:#fff;--tx:#172033;--muted:#687386;--blue:#1769e0;--line:#e3e8f0;--red:#c0392b;--green:#14804a;--soft:#eaf1ff;--softtx:#174b9b;--inp:#fff}
 @media(prefers-color-scheme:dark){:root{--bg:#0f1420;--card:#192031;--tx:#e8ecf5;--muted:#9aa5b8;--blue:#4a8ff0;--line:#2a3349;--red:#ef7b6e;--green:#4cc88a;--soft:#22304d;--softtx:#a9c8ff;--inp:#121827}}
@@ -68,8 +69,10 @@ textarea{min-height:60px;resize:vertical}
 .category-row input[type=number]{width:112px;flex:none}
 .empty{text-align:center;padding:22px;color:var(--muted)}
 footer{text-align:center;color:var(--muted);font-size:12px;padding:10px}
-@media(max-width:560px){.grid{grid-template-columns:1fr 1fr}.grid .stat:first-child{grid-column:1/-1}.formgrid,.filters{grid-template-columns:1fr}.full{grid-column:auto}.actions button{flex:1}}
+@media(max-width:560px){.grid{grid-template-columns:1fr 1fr}.grid .stat:first-child{grid-column:auto}.formgrid,.filters{grid-template-columns:1fr}.full{grid-column:auto}.actions button{flex:1}}
+[data-tab="accounts"],[data-tab="goals"],#accountsTab,#goalsTab{display:none!important}
 .tabs{overflow-x:auto}.tabs button{flex:none;padding:10px 13px}
+#acc,#iAcc,#tFrom,#tTo,#gAcc,#accForm,#tfForm,#accList,#namesBtn,#aName,#aType,#aBal{display:none!important}
 </style>
 </head>
 <body>
@@ -94,16 +97,19 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:10px}
 <main id="appView" class="hidden">
  <div class="monthbar"><button id="prevM" class="secondary" aria-label="Mês anterior">‹</button><b id="monthLabel"></b><button id="nextM" class="secondary" aria-label="Mês seguinte">›</button></div>
  <div class="grid">
-  <div class="stat"><small>Saldo</small><strong id="balance">0,00 €</strong><small id="prevBal"></small><small id="provBal"></small></div>
   <div class="stat"><small>Despesas</small><strong id="expenses">0,00 €</strong></div>
   <div class="stat"><small>Receitas</small><strong id="income">0,00 €</strong></div>
  </div>
  <div class="tabs">
-  <button class="active" data-tab="movements">Movimentos</button>
+  <button class="active" data-tab="home">Início</button>
+  <button data-tab="movements">Adicionar</button>
+  <button data-tab="history">Histórico</button>
   <button data-tab="summary">Resumo</button>
+  <button data-tab="recurring">Recorrentes</button>
   <button data-tab="categories">Categorias</button>
-  <button data-tab="recurring">Recorrentes</button><button data-tab="accounts">Contas</button><button data-tab="goals">Metas</button><button data-tab="import">Importar</button>
+  <button data-tab="import">Importar</button>
  </div>
+ <section id="homeTab"><div class="card"><h2>Contas a pagar</h2><p class="small">Despesas recorrentes e anuais ainda não assinaladas como pagas neste ciclo (dia 21 a dia 20).</p><div id="dueList"></div></div></section>
 
  <section id="movementsTab">
   <div class="card">
@@ -115,7 +121,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:10px}
      <div class="field"><label for="amount">Valor (€)</label><input id="amount" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="0,00" required></div>
      <div class="field"><label for="date">Data</label><input id="date" type="date" required></div>
      <div class="field"><label for="category">Categoria</label><select id="category" required></select></div>
-     <div class="field"><label for="acc">Conta</label><select id="acc"></select></div><div class="field"><label for="who">Quem</label><select id="who"></select></div>
+     <div class="field full"><label for="who">A quem pertence</label><select id="who"></select></div>
      <div class="field full"><label for="description">Descrição</label><input id="description" list="descList" maxlength="150" placeholder="Ex.: supermercado" required><datalist id="descList"></datalist></div>
      <div class="field full chk" id="repeatBox"><input type="checkbox" id="repeat"><label for="repeat">Repetir todos os meses</label></div>
      <div class="field full"><label for="notes">Notas (opcional)</label><textarea id="notes" maxlength="1000"></textarea></div>
@@ -123,6 +129,8 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:10px}
     <div class="actions"><button id="saveBtn" type="submit">Guardar movimento</button><button id="cancelEdit" class="secondary hidden" type="button">Cancelar</button><button id="delEdit" class="danger hidden" type="button">Apagar</button></div>
    </form>
   </div>
+ </section>
+ <section id="historyTab" class="hidden">
   <div class="card">
    <div style="display:flex;justify-content:space-between;align-items:center"><h2>Histórico</h2><span id="count" class="small"></span></div>
    <div class="filters">
@@ -178,15 +186,12 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:10px}
    <div class="field"><label for="gTarget">Objetivo (€)</label><input id="gTarget" type="number" inputmode="decimal" min="1" step="0.01" required></div><div class="field"><label for="gMonthly">Poupar por mês (€)</label><input id="gMonthly" type="number" inputmode="decimal" min="0" step="0.01" value="0"></div>
    <div class="field full"><label for="gAcc">Conta associada</label><select id="gAcc"></select></div></div>
    <p class="small">O progresso é o saldo da conta associada: reforça-a com transferências. Em ações/ETFs conta o valor investido, não o valor de mercado.</p><div class="actions"><button type="submit">Criar meta</button></div></form></div>
-  <div class="card"><h2>Despesas anuais</h2><p class="small">Seguros, IMI, IUC, férias… divididos por 12 para reservares todos os meses.</p><div id="annList"></div>
-   <form id="annForm"><div class="formgrid"><div class="field full"><label for="nDesc">Descrição</label><input id="nDesc" maxlength="80" placeholder="Ex.: Seguro do carro" required></div>
-   <div class="field"><label for="nVal">Valor anual (€)</label><input id="nVal" type="number" inputmode="decimal" min="1" step="0.01" required></div><div class="field"><label for="nMes">Mês de pagamento</label><select id="nMes"></select></div></div>
-   <div class="actions"><button type="submit">Adicionar</button></div></form></div>
+
  </section>
  <section id="importTab" class="hidden"><div class="card"><h2>Importar extrato do banco</h2>
-  <p class="small">Carrega o CSV do banco. Movimentos já existentes são ignorados e as categorias são sugeridas a partir do que já registaste; podes corrigir antes de importar.</p>
+  <p class="small">Carrega o CSV ou Excel do banco. Os movimentos são comparados com os já registados (data, descrição, valor e tipo); duplicados são assinalados e ignorados. Podes rever e categorizar cada linha antes de importar.</p>
   <div class="field"><label for="iAcc">Importar para a conta</label><select id="iAcc"></select></div>
-  <div class="field" style="margin-top:10px"><label for="iFile">Ficheiro CSV</label><input id="iFile" type="file" accept=".csv,text/csv,text/plain"></div>
+  <div class="field" style="margin-top:10px"><label for="iFile">Ficheiro CSV</label><input id="iFile" type="file" accept=".csv,.xlsx,.xls,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"></div>
   <div id="impSum" class="small" style="margin:10px 0"></div><div id="impList"></div><div class="actions"><button id="impGo" class="hidden">Importar selecionados</button></div></div></section>
 </main>
 <footer>Dados sincronizados com Supabase</footer>
@@ -205,14 +210,18 @@ const lc=s=>String(s).toLocaleLowerCase("pt-PT");
 const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
 
 let sb=null,user=null,movements=[],categories=[],budgets={},bRows={},recs=[],accounts=[],goals=[],annuals=[],allMov=[],imp=[],extraWarned=false,recWarned=false,budgetWarned=false,channel=null,signup=false,timer=null;
-let month=today().slice(0,7);
+let month=currentCycle();
 
 function msg(t,k=""){$("message").textContent=t;$("message").className="notice"+(k?" "+k:"")}
 function clearMsg(){$("message").classList.add("hidden")}
 function status(t){$("syncStatus").textContent=t}
 function shiftMonth(m,d){const [y,mo]=m.split("-").map(Number);const dt=new Date(y,mo-1+d,1);return `${dt.getFullYear()}-${pad(dt.getMonth()+1)}`}
-function monthName(m,short){const [y,mo]=m.split("-").map(Number);return new Date(y,mo-1,1).toLocaleDateString("pt-PT",short?{month:"short"}:{month:"long",year:"numeric"})}
-const inMonth=(m,mm)=>(m.date||"").startsWith(mm);
+function monthName(m,short){const [y,mo]=m.split("-").map(Number);return (short?new Date(y,mo-1,1).toLocaleDateString("pt-PT",{month:"short",year:"numeric"}):`${new Date(y,mo-1,1).toLocaleDateString("pt-PT",{month:"long",year:"numeric"})} (21–20)`.replace(" (21–20)"," · 21 a 20"))}
+function cycleKey(date){const d=String(date||"");if(!/^\d{4}-\d{2}-\d{2}$/.test(d))return "";const dt=new Date(d+"T12:00:00");if(dt.getDate()>=21)dt.setMonth(dt.getMonth()+1);return `${dt.getFullYear()}-${pad(dt.getMonth()+1)}`}
+const inMonth=(m,mm)=>cycleKey(m.date)===mm;
+function currentCycle(){const d=today();return cycleKey(d)}
+function cycleStart(mm){return `${shiftMonth(mm,-1)}-21`}
+function cycleEnd(mm){return `${mm}-20`;}
 const sum=(rows,t)=>rows.filter(m=>m.type===t).reduce((s,m)=>s+m.amount,0);
 
 function initClient(){
@@ -246,7 +255,7 @@ $("authForm").addEventListener("submit",async e=>{
 
 async function startApp(){
  if(!user)return;
- showApp();clearMsg();status("A sincronizar...");
+ showApp();openTab("home");clearMsg();status("A sincronizar...");
  await loadAll();subscribe();await processRecs();
 }
 
@@ -309,9 +318,9 @@ async function processRecs(){
 async function recUpdate(id,patch){const x=await sb.from("recorrentes_gastos").update(patch).eq("id",id);if(x.error)msg("Erro: "+x.error.message,"error");else{await loadAll();await processRecs()}}
 function renderRecs(){
  $("recList").innerHTML=recs.length?recs.map(r=>`<div class="mv"><div class="l"><strong>${esc(r.descricao)}</strong><span class="small">Dia ${r.dia} · ${esc(r.categoria)} · ${r.tipo}${r.ativo?"":" · em pausa"}</span></div>
- <div class="r"><b class="${r.tipo==="receita"?"pos":""}">${money(r.valor)}</b><button class="ghost" data-rv="${r.id}">Valor</button><button class="ghost" data-rp="${r.id}">${r.ativo?"Pausar":"Retomar"}</button><button class="danger" data-rd="${r.id}">Apagar</button></div></div>`).join(""):'<div class="empty">Ainda não há movimentos recorrentes.</div>';
+ <div class="r"><b class="${r.tipo==="receita"?"pos":""}">${money(r.valor)}</b><button class="ghost" data-rv="${r.id}">Editar</button><button class="ghost" data-rp="${r.id}">${r.ativo?"Pausar":"Retomar"}</button><button class="danger" data-rd="${r.id}">Apagar</button></div></div>`).join(""):'<div class="empty">Ainda não há movimentos recorrentes.</div>';
  const L=$("recList"),get=id=>recs.find(x=>String(x.id)===id);
- L.querySelectorAll("[data-rv]").forEach(b=>b.onclick=()=>{const r=get(b.dataset.rv),v=Number(String(prompt("Novo valor (€), válido a partir do próximo registo:",r.valor)||"").replace(",","."));if(v>0)recUpdate(r.id,{valor:v})});
+ L.querySelectorAll("[data-rv]").forEach(b=>b.onclick=()=>{const r=get(b.dataset.rv);if(!r)return;const v=Number(String(prompt("Novo valor (€):",r.valor)||"").replace(",","."));if(!(v>0))return;const dia=Number(prompt("Dia do mês (1 a 31):",r.dia));if(!Number.isInteger(dia)||dia<1||dia>31)return;const desc=prompt("Descrição:",r.descricao);if(desc===null||!desc.trim())return;recUpdate(r.id,{valor:v,dia,descricao:desc.trim()})});
  L.querySelectorAll("[data-rp]").forEach(b=>b.onclick=()=>{const r=get(b.dataset.rp),t=today(),cm=t.slice(0,7);recUpdate(r.id,r.ativo?{ativo:false}:{ativo:true,ultimo_mes:Number(t.slice(8))>=r.dia?cm:shiftMonth(cm,-1)})});
  L.querySelectorAll("[data-rd]").forEach(b=>b.onclick=async()=>{const r=get(b.dataset.rd);if(!confirm(`Apagar «${r.descricao}»? Os movimentos já registados mantêm-se.`))return;const x=await sb.from("recorrentes_gastos").delete().eq("id",r.id);if(x.error)msg(x.error.message,"error");else await loadAll()});
 }
@@ -334,7 +343,7 @@ async function loadExtra(){
  accounts=a.data||[];goals=g.data||[];annuals=n.data||[];
 }
 const TIPOS={corrente:"Conta à ordem",poupanca:"Poupança",investimento:"Investimento",dinheiro:"Dinheiro"};
-const pessoas=()=>(store.get("pessoas")||"César,Esposa").split(",").map(x=>x.trim()).filter(Boolean);
+const pessoas=()=>["César","Rafaela","Gonçalo"];
 const defAcc=()=>(accounts.find(a=>a.tipo==="corrente")||{}).id;
 const bal=a=>Number(a.saldo_inicial)+allMov.filter(m=>(m.conta||defAcc())===a.id).reduce((t,m)=>t+(m.type==="receita"?m.amount:-m.amount),0);
 const uid=()=>crypto.randomUUID?crypto.randomUUID():"xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==="x"?r:r&3|8).toString(16)});
@@ -403,14 +412,14 @@ async function readImp(){
  const f=$("iFile").files[0];if(!f)return;
  const rows=await parseCSV(f),acc=$("iAcc").value||"",have={};
  if(!rows.length){msg("Não encontrei movimentos neste ficheiro.","error");return}
- allMov.filter(m=>(m.conta||defAcc()||"")===acc).forEach(m=>{const k=ikey(m.date,m.description,m.amount,m.type);have[k]=(have[k]||0)+1});
+ allMov.forEach(m=>{const k=ikey(m.date,m.description,m.amount,m.type);have[k]=(have[k]||0)+1});
  imp=rows.map(r=>{const k=ikey(r.date,r.desc,r.amount,r.type),dup=have[k]>0;if(dup)have[k]--;return{...r,dup,inc:!dup,cat:suggest(r.desc,r.type)}});
  renderImp();
 }
 $("iFile").onchange=readImp;$("iAcc").onchange=readImp;
 $("impList").onchange=e=>{const t=e.target;if(t.dataset.i!==undefined)imp[t.dataset.i].inc=t.checked;if(t.dataset.c!==undefined)imp[t.dataset.c].cat=t.value};
 $("impGo").onclick=async()=>{
- const acc=$("iAcc").value||null,who=$("who").value||null,rows=[];
+ const acc=null,who=$("who").value||null,rows=[];
  imp.filter(r=>r.inc).forEach(r=>{
   if(r.cat.startsWith("t:")){const o=r.cat.slice(2);rows.push(...(r.type==="despesa"?tfRows(r.date,r.desc,r.amount,acc,o,who):tfRows(r.date,r.desc,r.amount,o,acc,who)))}
   else rows.push({user_id:user.id,data:r.date,descricao:r.desc,categoria:r.cat,valor:r.amount,tipo:r.type,notas:"Importado",conta_id:acc,quem:who});
@@ -432,7 +441,16 @@ $("goalForm").addEventListener("submit",async e=>{e.preventDefault();if(await in
 document.querySelectorAll("[data-gn]").forEach(b=>b.onclick=()=>{$("gName").value=b.dataset.gn;$("gTarget").focus()});
 $("annForm").addEventListener("submit",async e=>{e.preventDefault();if(await ins("anuais_gastos",{descricao:$("nDesc").value.trim(),valor:Number($("nVal").value),mes:Number($("nMes").value)})){$("annForm").reset();msg("Despesa anual adicionada.","success")}});
 $("namesBtn").onclick=()=>{const v=prompt("Nomes das pessoas, separados por vírgula (têm de ser iguais nos dois telemóveis):",pessoas().join(", "));if(v&&v.trim()){store.set("pessoas",v);renderPeople()}};
-function renderAll(){calcBudgets();renderMonth();renderOptions();renderStats();renderMovements();renderSummary();renderCategories();renderRecs();renderChips();renderPeople();renderAccounts();renderGoals();renderAnn()}
+
+function renderDue(){
+ const key=month, start=cycleStart(key), end=cycleEnd(key), rows=[];
+ recs.filter(r=>r.ativo).forEach(r=>{const [ky,km]=key.split("-").map(Number),day=Number(r.dia)||1,dy=day>=21?shiftMonth(key,-1):key;const due=`${dy}-${pad(Math.min(day,new Date(Number(dy.slice(0,4)),Number(dy.slice(5,7)),0).getDate()))}`;if(due>=start&&due<=end){const paid=(r.pago_mes||"")===key;rows.push({id:r.id,kind:"rec",desc:r.descricao,date:due,amount:Number(r.valor),paid});}});
+ annuals.forEach(a=>{const dueMonth=Number(a.mes);const yy=Number(key.slice(0,4));const mm=Number(key.slice(5,7));if(dueMonth===mm){rows.push({id:a.id,kind:"ann",desc:a.descricao,date:`${key}-${pad(1)}`,amount:Number(a.valor),paid:!!a.pago});}});
+ $("dueList").innerHTML=rows.length?rows.sort((a,b)=>a.date.localeCompare(b.date)).map(r=>`<div class="mv"><div class="l"><strong>${esc(r.desc)}</strong><span class="small">${r.kind==="ann"?"Anual":"Recorrente"} · ${r.date} · ${money(r.amount)}</span></div><div class="r"><b class="${r.paid?"pos":"neg"}">${r.paid?"Paga":"Por pagar"}</b><button class="${r.paid?"secondary":""}" data-paid-kind="${r.kind}" data-paid-id="${r.id}" data-paid="${r.paid?"1":"0"}">${r.paid?"Reabrir":"Marcar paga"}</button></div></div>`).join(""):'<div class="empty">Não há contas a pagar identificadas neste ciclo.</div>';
+ $("dueList").querySelectorAll("[data-paid-id]").forEach(b=>b.onclick=async()=>{const paid=b.dataset.paid==="1",tbl=b.dataset.paidKind==="ann"?"anuais_gastos":"recorrentes_gastos",field=b.dataset.paidKind==="ann"?{pago:!paid}:{pago_mes:paid?null:month};const r=await sb.from(tbl).update(field).eq("id",b.dataset.paidId).eq("user_id",user.id);if(r.error){msg("Não foi possível atualizar o estado de pagamento. Executa primeiro o SQL de atualização indicado.","error");return}await loadAll();});
+}
+
+function renderAll(){calcBudgets();renderMonth();renderOptions();renderStats();renderMovements();renderSummary();renderCategories();renderRecs();renderChips();renderPeople();renderAccounts();renderGoals();renderAnn();renderDue()}
 function renderMonth(){$("monthLabel").textContent=monthName(month);const s=$("budgetScope"),v=s.value||"*";s.innerHTML=`<option value="*">Todos os meses</option><option value="m">Só ${monthName(month)}</option>`;s.value=v}
 function renderOptions(){
  const oc=$("category").value||store.get("lastCat"),of=$("categoryFilter").value;
@@ -516,7 +534,7 @@ $("movementForm").addEventListener("submit",async e=>{
   if(r.error)throw r.error;
   store.set("lastCat",row.categoria);store.set("eu",row.quem||"");store.set("acc",row.conta_id||"");
   if(!id&&$("repeat").checked){const rr=await sb.from("recorrentes_gastos").insert({user_id:user.id,descricao:row.descricao,categoria:row.categoria,valor:row.valor,tipo:row.tipo,dia:Number(row.data.slice(8)),ativo:true,ultimo_mes:row.data.slice(0,7)});if(rr.error)throw rr.error}
-  month=row.data.slice(0,7); /* mostra logo o mês do movimento guardado */
+  month=cycleKey(row.data); /* ciclo 21 a 20 */
   resetForm();await loadAll();
   const bd=budgets[row.categoria],spent=sum(movements.filter(m=>m.category===row.categoria&&inMonth(m,month)),"despesa");
   if(row.tipo==="despesa"&&bd&&spent>bd)msg(`Guardado, mas «${row.categoria}» já passou o orçamento: ${money(spent)} de ${money(bd)}.`,"error");
@@ -607,14 +625,14 @@ $("nextM").onclick=()=>{month=shiftMonth(month,1);renderAll()};
 
 function openTab(t){
  document.querySelectorAll("[data-tab]").forEach(x=>x.classList.toggle("active",x.dataset.tab===t));
- ["movements","summary","categories","recurring","accounts","goals","import"].forEach(n=>$(n+"Tab").classList.toggle("hidden",n!==t));
+ ["home","movements","history","summary","categories","recurring","accounts","goals","import"].forEach(n=>{const el=$(n+"Tab");if(el)el.classList.toggle("hidden",n!==t)});
 }
 document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>openTab(b.dataset.tab));
 
 $("exportBtn").onclick=()=>{
  const rows=getFiltered();
  if(!rows.length){msg("Não há movimentos para exportar neste mês/filtro.");return}
- const data=[["Data","Descrição","Categoria","Tipo","Valor (€)","Notas"],...rows.map(m=>[m.date,m.description,m.category,m.type,m.amount.toFixed(2).replace(".",","),m.notes])];
+ const data=[["Data","Descrição","Categoria","Tipo","Valor (€)","A quem pertence","Notas"],...rows.map(m=>[m.date,m.description,m.category,m.type,m.amount.toFixed(2).replace(".",","),m.quem||"",m.notes])];
  const csv="\uFEFF"+data.map(r=>r.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(";")).join("\r\n");
  const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8;"}));
  const a=document.createElement("a");a.href=url;a.download=`orcamento-familiar-${month}.csv`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
@@ -653,4 +671,5 @@ if(initClient()){
 </script>
 </body>
 </html>
+
 
