@@ -463,10 +463,7 @@ function renderOptions(){
 function renderStats(){
  const rows=movements.filter(m=>inMonth(m,month));
  const inc=sum(rows,"receita"),exp=sum(rows,"despesa"),bal=inc-exp;
- $("balance").textContent=money(bal);$("balance").className=bal<0?"neg":"";const pv=annuals.reduce((a,x)=>a+Number(x.valor)/12,0);$("provBal").textContent=pv?`Depois de reservar ${money(pv)}/mês (anuais): ${money(bal-pv)}`:"";
  $("expenses").textContent=money(exp);$("income").textContent=money(inc);
- const pe=sum(movements.filter(m=>inMonth(m,shiftMonth(month,-1))),"despesa");
- $("prevBal").textContent=pe?`Mês anterior: ${money(pe)} em despesas`:"";
 }
 function getFiltered(){
  const w=$("whoFilter").value,c=$("categoryFilter").value,q=lc($("searchFilter").value.trim());
@@ -671,5 +668,4 @@ if(initClient()){
 </script>
 </body>
 </html>
-
 
