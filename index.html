@@ -223,6 +223,8 @@ function currentCycle(){const d=today();return cycleKey(d)}
 function cycleStart(mm){return `${shiftMonth(mm,-1)}-21`}
 function cycleEnd(mm){return `${mm}-20`;}
 const sum=(rows,t)=>rows.filter(m=>m.type===t).reduce((s,m)=>s+m.amount,0);
+const shownBudget=c=>$("budgetScope").value==="m"?(budgets[c]||0):((bRows["*"]||{})[c]||0);
+
 
 function initClient(){
  if(!window.supabase){msg("Não foi possível carregar o Supabase. Verifica a ligação à Internet.","error");return false}
@@ -585,7 +587,6 @@ async function saveBudget(cat,v){
   await loadAll();msg(v>0?"Orçamento guardado.":"Orçamento removido (volta a valer o de todos os meses, se existir).","success");
  }catch(err){msg("Erro ao guardar o orçamento: "+err.message,"error")}
 }
-const shownBudget=c=>$("budgetScope").value==="m"?(budgets[c]||0):((bRows["*"]||{})[c]||0);
 async function saveCategory(o,row){
  const [ni,bi]=row.querySelectorAll("input"),n=ni.value.trim(),b=Number(bi.value)||0,bChanged=b!==shownBudget(o);
  if(n!==o){
@@ -621,8 +622,17 @@ $("prevM").onclick=()=>{month=shiftMonth(month,-1);renderAll()};
 $("nextM").onclick=()=>{month=shiftMonth(month,1);renderAll()};
 
 function openTab(t){
- document.querySelectorAll("[data-tab]").forEach(x=>x.classList.toggle("active",x.dataset.tab===t));
- ["home","movements","history","summary","categories","recurring","accounts","goals","import"].forEach(n=>{const el=$(n+"Tab");if(el)el.classList.toggle("hidden",n!==t)});
+ const valid=["home","movements","history","summary","categories","recurring","import"];
+ if(!valid.includes(t))t="home";
+ document.querySelectorAll("[data-tab]").forEach(x=>{
+  const active=x.dataset.tab===t;
+  x.classList.toggle("active",active);
+  x.setAttribute("aria-selected",active?"true":"false");
+ });
+ ["home","movements","history","summary","categories","recurring","accounts","goals","import"].forEach(n=>{
+  const el=$(n+"Tab");
+  if(el)el.classList.toggle("hidden",n!==t);
+ });
 }
 document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>openTab(b.dataset.tab));
 
