@@ -5,7 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1769e0">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Orçamento">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
 <title>Orçamento familiar</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -29,7 +32,7 @@ h2{font-size:17px;margin:0 0 12px}
 .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:14px}
 .stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px}
 .stat small{display:block;color:var(--muted)}
-.stat strong{font-size:clamp(17px,3.2vw,24px);overflow-wrap:anywhere}
+.stat strong{font-size:clamp(15px,3.2vw,24px);overflow-wrap:anywhere}
 .neg{color:var(--red)}.pos{color:var(--green)}
 .monthbar{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:12px}
 .monthbar b{min-width:160px;text-align:center;text-transform:capitalize}
@@ -72,10 +75,8 @@ textarea{min-height:60px;resize:vertical}
 .asset-chart:after{content:"";position:absolute;width:112px;height:112px;border-radius:50%;background:var(--card)}
 .asset-chart-label{position:relative;z-index:1;text-align:center;font-weight:750}.asset-legend{display:grid;gap:7px}.asset-legend-row{display:flex;align-items:center;gap:8px;justify-content:space-between}.asset-dot{width:11px;height:11px;border-radius:3px;display:inline-block;flex:none}.asset-legend-name{display:flex;align-items:center;gap:7px;min-width:0}
 footer{text-align:center;color:var(--muted);font-size:12px;padding:10px}
-@media(max-width:560px){.grid{grid-template-columns:1fr 1fr}.grid .stat:first-child{grid-column:auto}.formgrid,.filters{grid-template-columns:1fr}.full{grid-column:auto}.actions button{flex:1}}
-[data-tab="accounts"],[data-tab="goals"],#accountsTab,#goalsTab{display:none!important}
-.tabs{overflow-x:auto}.tabs button{flex:none;padding:10px 13px}
-#acc,#iAcc,#tFrom,#tTo,#gAcc,#accForm,#tfForm,#accList,#namesBtn,#aName,#aType,#aBal{display:none!important}
+.menu{display:flex;flex-direction:column}.menu button{padding:14px;text-align:left}
+@media(max-width:560px){.grid{gap:6px}.stat{padding:9px}.formgrid,.filters{grid-template-columns:1fr}.full{grid-column:auto}.actions button{flex:1}}
 </style>
 </head>
 <body>
@@ -102,18 +103,16 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:10px}
  <div class="grid">
   <div class="stat"><small>Despesas</small><strong id="expenses">0,00 €</strong></div>
   <div class="stat"><small>Receitas</small><strong id="income">0,00 €</strong></div>
+  <div class="stat"><small>Saldo</small><strong id="balance">0,00 €</strong></div>
  </div>
  <div class="tabs">
-  <button class="active" data-tab="home">Início</button>
-  <button data-tab="movements">Adicionar</button>
+  <button data-tab="home">Início</button>
+  <button class="active" data-tab="movements">Adicionar</button>
   <button data-tab="history">Histórico</button>
   <button data-tab="summary">Resumo</button>
-  <button data-tab="recurring">Recorrentes</button>
-  <button data-tab="categories">Categorias</button>
-  <button data-tab="import">Importar</button>
-  <button data-tab="patrimonio">Património</button>
+  <button data-tab="more">Mais</button>
  </div>
- <section id="homeTab"><div class="card"><h2>Contas a pagar</h2><p class="small">Despesas recorrentes e anuais ainda não assinaladas como pagas neste ciclo (dia 21 a dia 20).</p><div id="dueList"></div></div></section>
+ <section id="homeTab" class="hidden"><div class="card"><h2>Contas a pagar</h2><p class="small">Despesas recorrentes e anuais ainda não assinaladas como pagas neste ciclo (dia 21 a dia 20).</p><div id="dueList"></div></div></section>
 
  <section id="movementsTab">
   <div class="card">
@@ -151,14 +150,25 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:10px}
   <div class="card"><h2>Últimos 6 meses</h2><div id="history"></div></div>
  </section>
 
+ <section id="moreTab" class="hidden">
+  <div class="card"><h2>Mais</h2><div class="menu">
+   <button class="secondary" data-tab="recurring">Recorrentes e anuais</button>
+   <button class="secondary" data-tab="categories" style="margin-top:8px">Categorias e orçamentos</button>
+   <button class="secondary" data-tab="import" style="margin-top:8px">Importar extrato</button>
+   <button class="secondary" data-tab="patrimonio" style="margin-top:8px">Património</button>
+  </div></div>
+ </section>
+
  <section id="categoriesTab" class="hidden">
+  <button class="ghost" data-tab="more" style="margin-bottom:8px">‹ Mais</button>
   <div class="card">
    <h2>Adicionar categoria</h2>
    <form id="categoryForm"><div class="field"><label for="newCategory">Nome</label><input id="newCategory" maxlength="50" required placeholder="Ex.: Animais"></div><div class="actions"><button type="submit">Adicionar</button></div></form>
   </div>
   <div class="card"><h2>Gerir categorias</h2><div class="field" style="margin-bottom:10px"><label for="budgetScope">O orçamento aplica-se a</label><select id="budgetScope"></select></div><p class="small">Define o orçamento mensal de cada categoria (deixa vazio para não ter limite). Mudar o nome altera também os movimentos existentes. Só se apagam categorias sem movimentos.</p><div id="categoryList"></div></div>
  </section>
-<section id="recurringTab" class="hidden">
+ <section id="recurringTab" class="hidden">
+  <button class="ghost" data-tab="more" style="margin-bottom:8px">‹ Mais</button>
   <div class="card"><h2>Novo movimento recorrente</h2>
    <form id="recForm"><div class="formgrid">
     <div class="field"><label for="rType">Tipo</label><select id="rType"><option value="despesa">Despesa</option><option value="receita">Receita</option></select></div>
@@ -169,7 +179,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:10px}
     <div class="field full"><label for="rStart">Começa em</label><input id="rStart" type="month" required></div>
    </div><div class="actions"><button type="submit">Adicionar</button></div></form></div>
   <div class="card"><h2>Recorrentes</h2><p class="small">São registados automaticamente, no dia indicado de cada mês, quando abres a app (num dos telemóveis).</p><div id="recList"></div></div>
-  <div class="card"><h2>Despesas anuais (IUC, IMI, seguros, etc.)</h2><p class="small">Regista aqui despesas pagas uma vez por ano. Aparecem em «Contas a pagar» no mês escolhido.</p>
+  <div class="card"><h2>Despesas anuais (IUC, IMI, seguros, etc.)</h2><p class="small">Regista aqui despesas pagas uma vez por ano. Aparecem em «Contas a pagar» no mês escolhido, todos os anos.</p>
    <form id="annualForm"><div class="formgrid">
     <div class="field full"><label for="annualDesc">Descrição</label><input id="annualDesc" maxlength="150" required placeholder="Ex.: IUC do carro"></div>
     <div class="field"><label for="annualValue">Valor (€)</label><input id="annualValue" type="number" min="0.01" step="0.01" required placeholder="0,00"></div>
@@ -178,29 +188,8 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:10px}
    <div id="annList"></div>
   </div>
  </section>
-<section id="accountsTab" class="hidden">
-  <div class="card"><h2>Contas</h2><div id="accList"></div><div class="actions"><button id="namesBtn" class="secondary" type="button">Nomes das pessoas</button></div></div>
-  <div class="card"><h2>Nova conta</h2><form id="accForm"><div class="formgrid">
-   <div class="field"><label for="aName">Nome</label><input id="aName" maxlength="50" placeholder="Ex.: Conta à ordem" required></div>
-   <div class="field"><label for="aType">Tipo</label><select id="aType"><option value="corrente">Conta à ordem</option><option value="poupanca">Poupança</option><option value="investimento">Investimento (ações/ETFs)</option><option value="dinheiro">Dinheiro</option></select></div>
-   <div class="field full"><label for="aBal">Saldo atual (€)</label><input id="aBal" type="number" step="0.01" value="0"></div>
-  </div><div class="actions"><button type="submit">Criar conta</button></div></form></div>
-  <div class="card"><h2>Transferir entre contas</h2><p class="small">Não conta como despesa nem receita.</p><form id="tfForm"><div class="formgrid">
-   <div class="field"><label for="tFrom">De</label><select id="tFrom"></select></div><div class="field"><label for="tTo">Para</label><select id="tTo"></select></div>
-   <div class="field"><label for="tAmt">Valor (€)</label><input id="tAmt" type="number" inputmode="decimal" min="0.01" step="0.01" required></div><div class="field"><label for="tDate">Data</label><input id="tDate" type="date" required></div>
-   <div class="field full"><label for="tDesc">Descrição (opcional)</label><input id="tDesc" maxlength="100" placeholder="Ex.: Reforço fundo de emergência"></div>
-  </div><div class="actions"><button type="submit">Transferir</button></div></form></div>
- </section>
- <section id="goalsTab" class="hidden">
-  <div class="card"><h2>Metas de poupança</h2><div id="goalList"></div></div>
-  <div class="card"><h2>Nova meta</h2><div class="chips"><button type="button" class="secondary" data-gn="Fundo de emergência">Fundo de emergência</button><button type="button" class="secondary" data-gn="Ações / ETFs">Ações / ETFs</button></div>
-   <form id="goalForm"><div class="formgrid"><div class="field full"><label for="gName">Nome</label><input id="gName" maxlength="60" required></div>
-   <div class="field"><label for="gTarget">Objetivo (€)</label><input id="gTarget" type="number" inputmode="decimal" min="1" step="0.01" required></div><div class="field"><label for="gMonthly">Poupar por mês (€)</label><input id="gMonthly" type="number" inputmode="decimal" min="0" step="0.01" value="0"></div>
-   <div class="field full"><label for="gAcc">Conta associada</label><select id="gAcc"></select></div></div>
-   <p class="small">O progresso é o saldo da conta associada: reforça-a com transferências. Em ações/ETFs conta o valor investido, não o valor de mercado.</p><div class="actions"><button type="submit">Criar meta</button></div></form></div>
-
- </section>
  <section id="patrimonioTab" class="hidden">
+  <button class="ghost" data-tab="more" style="margin-bottom:8px">‹ Mais</button>
   <div class="card"><h2>Património total</h2><p class="small">Regista o valor atual das tuas poupanças e investimentos. Os valores são sincronizados entre os teus dispositivos.</p><div id="assetChart" class="asset-chart"><div class="asset-chart-label"><div class="small">Total</div><div id="assetTotal">0,00 €</div></div></div><div id="assetLegend" class="asset-legend"></div></div>
   <div class="card"><h2>Adicionar ativo</h2><form id="assetForm"><input type="hidden" id="assetId"><div class="formgrid">
    <div class="field"><label for="assetType">Tipo</label><select id="assetType"><option>Poupanças</option><option>PPR</option><option>Ações</option><option>ETFs</option><option>Criptomoedas</option><option>Outro</option></select></div>
@@ -212,20 +201,16 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:10px}
   </div><div class="actions"><button id="assetSave" type="submit">Guardar ativo</button><button id="assetCancel" type="button" class="secondary hidden">Cancelar edição</button></div></form></div>
   <div class="card"><h2>Ativos registados</h2><div id="assetList"></div></div>
  </section>
- <section id="importTab" class="hidden"><div class="card"><h2>Importar extrato do banco</h2>
+ <section id="importTab" class="hidden">
+  <button class="ghost" data-tab="more" style="margin-bottom:8px">‹ Mais</button>
+  <div class="card"><h2>Importar extrato do banco</h2>
   <p class="small">Carrega um CSV ou Excel do banco. A app compara com os movimentos já registados manualmente e com duplicados dentro do próprio ficheiro. Correspondências exatas são ignoradas; movimentos com a mesma data, valor e tipo mas descrição diferente são assinalados como possíveis duplicados para confirmares antes de importar.</p>
-  <div class="field"><label for="iAcc">Importar para a conta</label><select id="iAcc"></select></div>
   <div class="field" style="margin-top:10px"><label for="iFile">Ficheiro CSV ou Excel</label><input id="iFile" type="file" accept=".csv,.xlsx,.xls,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"></div>
   <div id="impSum" class="small" style="margin:10px 0"></div><div id="impList"></div><div class="actions"><button id="impGo" class="hidden">Importar selecionados</button></div></div></section>
 </main>
 <footer>Dados sincronizados com Supabase</footer>
 </div>
 
-<div id="legacyCompat" hidden aria-hidden="true">
- <select id="acc"><option value="">(sem conta)</option></select>
- <select id="nMes"><option value="1">Janeiro</option></select>
- <input id="nDesc" type="text"><input id="nVal" type="number">
-</div>
 <script>
 const SUPABASE_URL="https://gydouittbuvlhgptkdkp.supabase.co";
 const SUPABASE_KEY="sb_publishable_9WysdEayiy9V5vo3ttoR-g_TCU1YpLY";
@@ -238,7 +223,7 @@ const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 const lc=s=>String(s).toLocaleLowerCase("pt-PT");
 const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
 
-let sb=null,user=null,movements=[],categories=[],budgets={},bRows={},recs=[],accounts=[],goals=[],annuals=[],assets=[],allMov=[],imp=[],extraWarned=false,recWarned=false,budgetWarned=false,channel=null,signup=false,timer=null;
+let sb=null,user=null,movements=[],categories=[],budgets={},bRows={},recs=[],annuals=[],assets=[],allMov=[],imp=[],extraWarned=false,recWarned=false,budgetWarned=false,assetWarned=false,channel=null,signup=false,timer=null;
 let month=currentCycle();
 
 function msg(t,k=""){$("message").textContent=t;$("message").className="notice"+(k?" "+k:"")}
@@ -248,12 +233,12 @@ function shiftMonth(m,d){const [y,mo]=m.split("-").map(Number);const dt=new Date
 function monthName(m,short){const [y,mo]=m.split("-").map(Number);if(short)return new Date(y,mo-1,1).toLocaleDateString("pt-PT",{month:"short",year:"numeric"});const end=new Date(y,mo-1,1),start=new Date(y,mo-2,1);const startName=start.toLocaleDateString("pt-PT",{month:"long",year:"numeric"});const endName=end.toLocaleDateString("pt-PT",{month:"long"});return `${startName} · 21 a 20 de ${endName.charAt(0).toUpperCase()+endName.slice(1)}`}
 function cycleKey(date){const d=String(date||"");if(!/^\d{4}-\d{2}-\d{2}$/.test(d))return "";const dt=new Date(d+"T12:00:00");if(dt.getDate()>=21)dt.setMonth(dt.getMonth()+1);return `${dt.getFullYear()}-${pad(dt.getMonth()+1)}`}
 const inMonth=(m,mm)=>cycleKey(m.date)===mm;
-function currentCycle(){const d=today();return cycleKey(d)}
+function currentCycle(){return cycleKey(today())}
 function cycleStart(mm){return `${shiftMonth(mm,-1)}-21`}
-function cycleEnd(mm){return `${mm}-20`;}
+function cycleEnd(mm){return `${mm}-20`}
 const sum=(rows,t)=>rows.filter(m=>m.type===t).reduce((s,m)=>s+m.amount,0);
 const shownBudget=c=>$("budgetScope").value==="m"?(budgets[c]||0):((bRows["*"]||{})[c]||0);
-
+const pessoas=()=>["César","Rafaela","Gonçalo"];
 
 function initClient(){
  if(!window.supabase){msg("Não foi possível carregar o Supabase. Verifica a ligação à Internet.","error");return false}
@@ -286,7 +271,7 @@ $("authForm").addEventListener("submit",async e=>{
 
 async function startApp(){
  if(!user)return;
- showApp();openTab("home");clearMsg();status("A sincronizar...");
+ showApp();openTab("movements");clearMsg();status("A sincronizar...");
  await loadAll();subscribe();await processRecs();
 }
 
@@ -295,8 +280,9 @@ async function loadAll(){
  try{
   const r=await sb.from("gastos").select("*").order("data",{ascending:false}).limit(5000);
   if(r.error)throw r.error;
-  allMov=(r.data||[]).map(x=>({conta:x.conta_id,quem:x.quem,transf:x.transf_id,id:x.id,date:x.data,description:x.descricao||"",category:x.categoria||"Outras despesas",amount:Number(x.valor)||0,type:x.tipo==="receita"?"receita":"despesa",notes:x.notas||""}));movements=allMov.filter(m=>!m.transf);
-  await loadCategories();await loadBudgets();await loadRecs();await loadExtra();await loadAssets();
+  allMov=(r.data||[]).map(x=>({quem:x.quem,transf:x.transf_id,id:x.id,date:x.data,description:x.descricao||"",category:x.categoria||"Outras despesas",amount:Number(x.valor)||0,type:x.tipo==="receita"?"receita":"despesa",notes:x.notas||""}));
+  movements=allMov.filter(m=>!m.transf);
+  await loadCategories();await loadBudgets();await loadRecs();await loadAnnuals();await loadAssets();
   renderAll();
   status("Sincronizado · "+new Date().toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"}));
  }catch(err){status("Erro de sincronização");msg("Não foi possível sincronizar: "+err.message,"error")}
@@ -326,6 +312,11 @@ async function loadRecs(){
  const r=await sb.from("recorrentes_gastos").select("*").order("descricao");
  if(r.error){recs=[];if(!recWarned){recWarned=true;msg("Recorrentes indisponíveis: falta criar a tabela recorrentes_gastos no Supabase (SQL).","error")}return}
  recs=r.data||[];
+}
+async function loadAnnuals(){
+ const r=await sb.from("anuais_gastos").select("*").order("created_at");
+ if(r.error&&!extraWarned){extraWarned=true;msg("Despesas anuais indisponíveis: falta executar o SQL no Supabase.","error")}
+ annuals=r.data||[];
 }
 /* Regista os recorrentes em atraso. O update condicionado em ultimo_mes garante que só um telemóvel regista cada mês. */
 async function processRecs(){
@@ -367,49 +358,18 @@ function renderChips(){
  $("chips").querySelectorAll("[data-chip]").forEach(b=>b.onclick=()=>{if(!$("movementId").value)fillFrom(movements.find(m=>lc(m.description)===b.dataset.chip),true)});
  $("descList").innerHTML=[...new Set(movements.map(m=>m.description))].slice(0,200).map(d=>`<option value="${esc(d)}">`).join("");
 }
-async function loadExtra(){
- const q=t=>sb.from(t).select("*").order("created_at");
- const [a,g,n]=await Promise.all([q("contas_gastos"),q("metas_gastos"),q("anuais_gastos")]);
- if((a.error||g.error||n.error)&&!extraWarned){extraWarned=true;msg("Contas, metas ou anuais indisponíveis: falta executar o SQL no Supabase.","error")}
- accounts=a.data||[];goals=g.data||[];annuals=n.data||[];
-}
 async function loadAssets(){
  const r=await sb.from("patrimonio_gastos").select("*").order("created_at",{ascending:false});
  if(r.error){assets=[];if(!assetWarned){assetWarned=true;msg("O separador Património precisa da tabela patrimonio_gastos. Executa o SQL fornecido para o ativar.","error")}return}
  assets=(r.data||[]).map(x=>({id:x.id,tipo:x.tipo||"Outro",nome:x.nome||"",valor:Number(x.valor)||0,moeda:x.moeda||"EUR",taxa_eur:Number(x.taxa_eur)||1,notas:x.notas||""}));
 }
-let assetWarned=false;
-const TIPOS={corrente:"Conta à ordem",poupanca:"Poupança",investimento:"Investimento",dinheiro:"Dinheiro"};
-const pessoas=()=>["César","Rafaela","Gonçalo"];
-const defAcc=()=>(accounts.find(a=>a.tipo==="corrente")||{}).id;
-const bal=a=>Number(a.saldo_inicial)+allMov.filter(m=>(m.conta||defAcc())===a.id).reduce((t,m)=>t+(m.type==="receita"?m.amount:-m.amount),0);
-const uid=()=>crypto.randomUUID?crypto.randomUUID():"xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==="x"?r:r&3|8).toString(16)});
-function tfRows(date,desc,val,from,to,who){const b={user_id:user.id,data:date,descricao:desc,categoria:"Transferência",valor:val,notas:"",quem:who||null,transf_id:uid()};return[{...b,tipo:"despesa",conta_id:from},{...b,tipo:"receita",conta_id:to}]}
-async function ins(tb,row){const r=await sb.from(tb).insert(Array.isArray(row)?row:{user_id:user.id,...row});if(r.error){msg("Erro: "+r.error.message,"error");return false}await loadAll();return true}
 async function del(tb,id,t){if(!confirm(`Apagar «${t}»?`))return;const r=await sb.from(tb).delete().eq("id",id);if(r.error)msg(r.error.message,"error");else await loadAll()}
 function renderPeople(){
- const P=pessoas(),ov=$("whoFilter").value,ow=$("who").value||store.get("eu")||"",oa=$("acc").value||store.get("acc")||defAcc()||"";
- const po=P.map(x=>`<option>${esc(x)}</option>`).join(""),ao=accounts.map(a=>`<option value="${a.id}">${esc(a.nome)}</option>`).join("");
+ const P=pessoas(),ov=$("whoFilter").value,ow=$("who").value||store.get("eu")||"";
+ const po=P.map(x=>`<option>${esc(x)}</option>`).join("");
  $("who").innerHTML='<option value="">—</option>'+po;$("who").value=P.includes(ow)?ow:"";
  $("whoFilter").innerHTML='<option value="">Todos</option>'+po;$("whoFilter").value=ov;
- $("acc").innerHTML='<option value="">(sem conta)</option>'+ao;$("acc").value=accounts.some(a=>a.id===oa)?oa:"";
- const iv=$("iAcc").value;$("iAcc").innerHTML=ao||'<option value="">(sem conta)</option>';if(accounts.some(a=>a.id===iv))$("iAcc").value=iv;
- $("tFrom").innerHTML=$("tTo").innerHTML=$("gAcc").innerHTML=ao;
- if($("annualMonth") && !$ ("annualMonth").options.length) $("annualMonth").innerHTML=[...Array(12)].map((_,i)=>`<option value="${i+1}">${new Date(2026,i,1).toLocaleDateString("pt-PT",{month:"long"})}</option>`).join("");
- if(!$("tDate").value)$("tDate").value=today();
-}
-function renderAccounts(){
- $("accList").innerHTML=accounts.length?accounts.map(a=>`<div class="mv"><div class="l"><strong>${esc(a.nome)}</strong><span class="small">${TIPOS[a.tipo]||a.tipo}</span></div><div class="r"><b class="${bal(a)<0?"neg":""}">${money(bal(a))}</b><button class="ghost" data-ab="${a.id}">Acertar saldo</button><button class="danger" data-ad="${a.id}">Apagar</button></div></div>`).join("")+`<div class="mv"><strong>Total</strong><b>${money(accounts.reduce((t,a)=>t+bal(a),0))}</b></div>`:'<div class="empty">Cria primeiro a tua conta à ordem.</div>';
- const L=$("accList");
- L.querySelectorAll("[data-ab]").forEach(b=>b.onclick=async()=>{const a=accounts.find(x=>x.id===b.dataset.ab),v=prompt("Saldo real atual (€):",bal(a).toFixed(2));if(v===null)return;const t=Number(v.replace(",","."));if(!Number.isFinite(t))return;const r=await sb.from("contas_gastos").update({saldo_inicial:Math.round((Number(a.saldo_inicial)+t-bal(a))*100)/100}).eq("id",a.id);if(r.error)msg(r.error.message,"error");else await loadAll()});
- L.querySelectorAll("[data-ad]").forEach(b=>b.onclick=()=>del("contas_gastos",b.dataset.ad,accounts.find(x=>x.id===b.dataset.ad).nome));
-}
-function renderGoals(){
- $("goalList").innerHTML=goals.length?goals.map(g=>{
-  const a=accounts.find(x=>x.id===g.conta_id),cur=a?bal(a):0,obj=Number(g.objetivo),pct=Math.min(100,Math.max(0,cur/obj*100)),mens=Number(g.mensal)||0;
-  const mm=a?allMov.filter(m=>m.transf&&m.type==="receita"&&(m.conta||defAcc())===a.id&&inMonth(m,month)).reduce((t,m)=>t+m.amount,0):0;
-  return `<div class="cat" style="cursor:default"><div class="t"><span><b>${esc(g.nome)}</b> <span class="small">${a?esc(a.nome):"sem conta"}</span></span><span><b>${money(cur)}</b> <span class="small">de ${money(obj)} · ${Math.round(pct)}%</span></span></div><div class="bar"><i style="width:${pct}%;background:var(--green)"></i></div><span class="small">${mens?`Este mês: ${money(mm)} de ${money(mens)} · `:""}${cur>=obj?"Meta atingida!":"Faltam "+money(obj-cur)}</span> <button class="danger" style="padding:2px 8px;font-size:12px" data-gd="${g.id}">Apagar</button></div>`}).join(""):'<div class="empty">Ainda não há metas.</div>';
- $("goalList").querySelectorAll("[data-gd]").forEach(b=>b.onclick=()=>del("metas_gastos",b.dataset.gd,goals.find(x=>x.id===b.dataset.gd).nome));
+ if(!$("annualMonth").options.length)$("annualMonth").innerHTML=[...Array(12)].map((_,i)=>`<option value="${i+1}">${new Date(2026,i,1).toLocaleDateString("pt-PT",{month:"long"})}</option>`).join("");
 }
 function renderAnn(){
  const cm=new Date().getMonth()+1;
@@ -423,7 +383,6 @@ const normD=d=>lc(d).replace(/\d[\dx]*/g,"").replace(/\s+/g," ").trim();
 const RULES=[[/lidl|continente|pingo doce|minipreco|auchan|padaria|pastelaria|talho|intermarche|mercearia|supermerc/,"Alimentação"],[/via verde|galp|prio|posico|combu|repsol|\bcp\b|uber|bolt|estacion|parque/,"Transportes"],[/saude|farmac|clinica|hospital|terapia|dentist|optica/,"Saúde"],[/edp|endesa|\bnos\b|meo|vodafone|nowo|epal|agua|seguro|camara|municip|iuc|imi\b/,"Serviços"],[/restaur|cafe|cervej|cinema|spotify|netflix|trekkin|ginasio/,"Lazer"]];
 function suggest(d,type){
  const hit=movements.find(m=>m.type===type&&normD(m.description)===normD(d));if(hit)return hit.category;
- if(/trading ?212|xtb|degiro|\betf|binance|trade republic/.test(lc(d))){const a=accounts.find(x=>x.tipo==="investimento");if(a)return"t:"+a.id}
  const c=type==="receita"?(/gnr|vencimento|salario|ordenado/.test(lc(d))?"Salário":"Outras receitas"):((RULES.find(r=>r[0].test(lc(d)))||[])[1]||"Outras despesas");
  return categories.find(x=>lc(x)===lc(c))||(type==="receita"?"Outras receitas":"Outras despesas");
 }
@@ -448,17 +407,15 @@ async function parseCSV(file){
 const cleanDesc=d=>lc(d).normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g," ").trim().replace(/\s+/g," ");
 const ikey=(d,t,a,ty)=>`${d}|${cleanDesc(t)}|${Number(a).toFixed(2)}|${ty}`;
 function renderImp(){
- const ai=$("iAcc").value,opts=sel=>categories.map(c=>`<option value="${esc(c)}"${c===sel?" selected":""}>${esc(c)}</option>`).join("")+accounts.filter(a=>a.id!==ai).map(a=>`<option value="t:${a.id}"${"t:"+a.id===sel?" selected":""}>↔ ${esc(a.nome)}</option>`).join("");
+ const opts=sel=>categories.map(c=>`<option value="${esc(c)}"${c===sel?" selected":""}>${esc(c)}</option>`).join("");
  $("impSum").textContent=imp.length?`${imp.length} movimentos no ficheiro · ${imp.filter(r=>r.dup).length} já existem · ${imp.filter(r=>r.added).length} adicionados` : "";
  $("impList").innerHTML=imp.map((r,i)=>`<div class="mv"><div class="l"><strong>${esc(r.desc)}</strong><span class="small">${r.date}${r.dup?" · já existe":r.possible?" · possível duplicado — confirma antes de adicionar":""}${r.added?" · adicionado":""}</span><div style="margin-top:6px"><select data-c="${i}" ${r.added||r.dup?"disabled":""}>${opts(r.cat)}</select></div></div><div class="r"><b class="${r.type==="receita"?"pos":""}">${r.type==="receita"?"+":"−"}${money(r.amount)}</b><button type="button" class="${r.added||r.dup?"secondary":""}" data-add-one="${i}" ${r.added||r.dup?"disabled":""}>${r.added?"Adicionado":r.dup?"Já existe":"Adicionar"}</button></div></div>`).join("");
  $("impGo").classList.toggle("hidden",!imp.some(r=>r.inc&&!r.added&&!r.dup));
  $("impList").querySelectorAll("[data-add-one]").forEach(b=>b.onclick=async()=>{
   const i=Number(b.dataset.addOne),r=imp[i];if(!r||r.added||r.dup)return;
   if(r.possible&&!confirm("Este movimento tem a mesma data, valor e tipo de outro movimento. Queres adicioná-lo mesmo assim?"))return;
-  const who=$("who").value||null;let rows;
-  if(r.cat.startsWith("t:")){const dest=r.cat.slice(2);rows=r.type==="despesa"?tfRows(r.date,r.desc,r.amount,null,dest,who):tfRows(r.date,r.desc,r.amount,dest,null,who)}
-  else rows=[{user_id:user.id,data:r.date,descricao:r.desc,categoria:r.cat,valor:r.amount,tipo:r.type,notas:"Importado",conta_id:null,quem:who}];
-  b.disabled=true;const res=await sb.from("gastos").insert(rows);
+  b.disabled=true;
+  const res=await sb.from("gastos").insert({user_id:user.id,data:r.date,descricao:r.desc,categoria:r.cat,valor:r.amount,tipo:r.type,notas:"Importado",quem:$("who").value||null});
   if(res.error){msg("Não foi possível adicionar este movimento: "+res.error.message,"error");b.disabled=false;return}
   r.added=true;r.inc=false;await loadAll();renderImp();msg("Movimento adicionado.","success");
  });
@@ -466,7 +423,7 @@ function renderImp(){
 
 async function readImp(){
  const f=$("iFile").files[0];if(!f)return;
- const rows=await parseCSV(f),acc=$("iAcc").value||"",have={};
+ const rows=await parseCSV(f),have={};
  if(!rows.length){msg("Não encontrei movimentos neste ficheiro.","error");return}
  allMov.forEach(m=>{const k=ikey(m.date,m.description,m.amount,m.type);have[k]=(have[k]||0)+1});
  const used={};
@@ -475,14 +432,11 @@ async function readImp(){
  return{...r,dup,possible,added:false,inc:!dup&&!possible,cat:suggest(r.desc,r.type)}});
  renderImp();
 }
-$("iFile").onchange=readImp;$("iAcc").onchange=readImp;
-$("impList").onchange=e=>{const t=e.target;if(t.dataset.i!==undefined)imp[t.dataset.i].inc=t.checked;if(t.dataset.c!==undefined)imp[t.dataset.c].cat=t.value};
+$("iFile").onchange=readImp;
+$("impList").onchange=e=>{const t=e.target;if(t.dataset.c!==undefined)imp[t.dataset.c].cat=t.value};
 $("impGo").onclick=async()=>{
- const acc=null,who=$("who").value||null,rows=[];
- imp.filter(r=>r.inc).forEach(r=>{
-  if(r.cat.startsWith("t:")){const o=r.cat.slice(2);rows.push(...(r.type==="despesa"?tfRows(r.date,r.desc,r.amount,acc,o,who):tfRows(r.date,r.desc,r.amount,o,acc,who)))}
-  else rows.push({user_id:user.id,data:r.date,descricao:r.desc,categoria:r.cat,valor:r.amount,tipo:r.type,notas:"Importado",conta_id:acc,quem:who});
- });
+ const who=$("who").value||null;
+ const rows=imp.filter(r=>r.inc).map(r=>({user_id:user.id,data:r.date,descricao:r.desc,categoria:r.cat,valor:r.amount,tipo:r.type,notas:"Importado",quem:who}));
  if(!rows.length){msg("Nada selecionado para importar.");return}
  $("impGo").disabled=true;
  try{for(let i=0;i<rows.length;i+=200){const r=await sb.from("gastos").insert(rows.slice(i,i+200));if(r.error)throw r.error}
@@ -490,29 +444,42 @@ $("impGo").onclick=async()=>{
  catch(err){msg("Erro ao importar: "+err.message,"error")}
  finally{$("impGo").disabled=false}
 };
-$("accForm").addEventListener("submit",async e=>{e.preventDefault();if(await ins("contas_gastos",{nome:$("aName").value.trim(),tipo:$("aType").value,saldo_inicial:Number($("aBal").value)||0})){$("accForm").reset();msg("Conta criada.","success")}});
-$("tfForm").addEventListener("submit",async e=>{
- e.preventDefault();const a=$("tFrom").value,b=$("tTo").value,v=Number($("tAmt").value);
- if(!a||!b||a===b||!(v>0)){msg("Escolhe duas contas diferentes e um valor.","error");return}
- if(await ins("gastos",tfRows($("tDate").value,$("tDesc").value.trim()||"Transferência",v,a,b,$("who").value))){$("tAmt").value="";$("tDesc").value="";msg("Transferência registada.","success")}
+$("annualForm").addEventListener("submit",async e=>{
+ e.preventDefault();const descricao=$("annualDesc").value.trim(),valor=Number($("annualValue").value),mes=Number($("annualMonth").value);
+ if(!descricao||!(valor>0)||!(mes>=1&&mes<=12)){msg("Preenche a descrição, o valor e o mês de vencimento.","error");return}
+ const r=await sb.from("anuais_gastos").insert({user_id:user.id,descricao,valor,mes,pago:false});
+ if(r.error){msg("Erro: "+r.error.message,"error");return}
+ $("annualForm").reset();await loadAll();msg("Despesa anual adicionada. Vai aparecer em Contas a pagar no mês escolhido.","success");
 });
-$("goalForm").addEventListener("submit",async e=>{e.preventDefault();if(await ins("metas_gastos",{nome:$("gName").value.trim(),objetivo:Number($("gTarget").value),mensal:Number($("gMonthly").value)||0,conta_id:$("gAcc").value||null})){$("goalForm").reset();msg("Meta criada.","success")}});
-document.querySelectorAll("[data-gn]").forEach(b=>b.onclick=()=>{$("gName").value=b.dataset.gn;$("gTarget").focus()});
-$("annualForm").addEventListener("submit",async e=>{e.preventDefault();const descricao=$("annualDesc").value.trim(),valor=Number($("annualValue").value),mes=Number($("annualMonth").value);if(!descricao||!(valor>0)||!(mes>=1&&mes<=12)){msg("Preenche a descrição, o valor e o mês de vencimento.","error");return}if(await ins("anuais_gastos",{descricao,valor,mes,pago:false})){$("annualForm").reset();msg("Despesa anual adicionada. Vai aparecer em Contas a pagar no mês escolhido.","success")}});
-$("namesBtn").onclick=()=>{const v=prompt("Nomes das pessoas, separados por vírgula (têm de ser iguais nos dois telemóveis):",pessoas().join(", "));if(v&&v.trim()){store.set("pessoas",v);renderPeople()}};
 
 function renderDue(){
- const key=month,start=cycleStart(key),end=cycleEnd(key),rows=[];
+ const key=month,start=cycleStart(key),end=cycleEnd(key),rows=[],yy=Number(key.slice(0,4));
  recs.filter(r=>r.ativo).forEach(r=>{const day=Number(r.dia)||1,dy=day>=21?shiftMonth(key,-1):key;const due=`${dy}-${pad(Math.min(day,new Date(Number(dy.slice(0,4)),Number(dy.slice(5,7)),0).getDate()))}`;if(due>=start&&due<=end){const paid=(r.pago_mes||"")===key;rows.push({id:r.id,kind:"rec",desc:r.descricao,date:due,amount:Number(r.valor),paid})}});
- annuals.forEach(a=>{const dueMonth=Number(a.mes),yy=Number(key.slice(0,4));if(dueMonth===Number(key.slice(5,7))){const due=`${yy}-${pad(dueMonth)}-01`;rows.push({id:a.id,kind:"ann",desc:a.descricao,date:due,amount:Number(a.valor),paid:!!a.pago})}});
+ /* Anuais: pagos só no ano indicado em pago_ano, por isso voltam a aparecer como por pagar no ano seguinte. */
+ annuals.forEach(a=>{const dueMonth=Number(a.mes);if(dueMonth===Number(key.slice(5,7))){const due=`${yy}-${pad(dueMonth)}-01`;rows.push({id:a.id,kind:"ann",desc:a.descricao,date:due,amount:Number(a.valor),paid:Number(a.pago_ano)===yy})}});
  const unpaid=rows.filter(r=>!r.paid).reduce((t,r)=>t+r.amount,0),all=rows.reduce((t,r)=>t+r.amount,0);
  const totalHtml=`<div class="mv" style="border-bottom:1px solid var(--line);margin-bottom:5px"><div class="l"><strong>Total por pagar</strong><span class="small">${rows.filter(r=>!r.paid).length} conta(s) por pagar · ${rows.length} no total</span></div><div class="r"><b class="neg">${money(unpaid)}</b><span class="small">Total listado: ${money(all)}</span></div></div>`;
  $("dueList").innerHTML=totalHtml+(rows.length?rows.sort((a,b)=>a.date.localeCompare(b.date)).map(r=>`<div class="mv"><div class="l"><strong>${esc(r.desc)}</strong><span class="small">${r.kind==="ann"?"Anual":"Recorrente"} · ${r.date} · ${money(r.amount)}</span></div><div class="r"><b class="${r.paid?"pos":"neg"}">${r.paid?"Paga":"Por pagar"}</b><button class="${r.paid?"secondary":""}" data-paid-kind="${r.kind}" data-paid-id="${r.id}" data-paid="${r.paid?"1":"0"}">${r.paid?"Reabrir":"Marcar paga"}</button></div></div>`).join(""):'<div class="empty">Não há contas a pagar identificadas neste ciclo.</div>');
- $("dueList").querySelectorAll("[data-paid-id]").forEach(b=>b.onclick=async()=>{const paid=b.dataset.paid==="1",tbl=b.dataset.paidKind==="ann"?"anuais_gastos":"recorrentes_gastos",field=b.dataset.paidKind==="ann"?{pago:!paid}:{pago_mes:paid?null:month};const r=await sb.from(tbl).update(field).eq("id",b.dataset.paidId).eq("user_id",user.id);if(r.error){msg("Não foi possível atualizar o estado de pagamento. Executa primeiro o SQL de atualização indicado.","error");return}await loadAll()});
+ $("dueList").querySelectorAll("[data-paid-id]").forEach(b=>b.onclick=async()=>{
+  const paid=b.dataset.paid==="1",ann=b.dataset.paidKind==="ann",id=b.dataset.paidId;
+  const tbl=ann?"anuais_gastos":"recorrentes_gastos",field=ann?{pago_ano:paid?null:yy}:{pago_mes:paid?null:month};
+  const r=await sb.from(tbl).update(field).eq("id",id).eq("user_id",user.id);
+  if(r.error){msg("Não foi possível atualizar o estado de pagamento. Executa primeiro o SQL de atualização indicado.","error");return}
+  /* Os recorrentes já são registados automaticamente; só as anuais precisam de criar a despesa. */
+  if(ann&&!paid){
+   const a=annuals.find(x=>String(x.id)===String(id));
+   if(a&&confirm(`Registar também «${a.descricao}» (${money(a.valor)}) como despesa de hoje?`)){
+    const cat=categories.find(c=>lc(c)==="serviços")||categories.find(c=>lc(c)==="outras despesas")||categories[0];
+    const ins=await sb.from("gastos").insert({user_id:user.id,data:today(),descricao:a.descricao,categoria:cat,valor:Number(a.valor),tipo:"despesa",notas:"Anual"});
+    if(ins.error)msg("Marcada como paga, mas não foi possível registar a despesa: "+ins.error.message,"error");
+   }
+  }
+  await loadAll();
+ });
 }
 
-function renderAll(){calcBudgets();renderMonth();renderOptions();renderStats();renderMovements();renderSummary();renderCategories();renderRecs();renderChips();renderPeople();renderAccounts();renderGoals();renderAnn();renderDue();renderAssets()}
-function renderMonth(){$("monthLabel").textContent=monthName(month);const s=$("budgetScope"),v=s.value||"*";s.innerHTML=`<option value="*">Todos os meses</option><option value="m">Só ${monthName(month)}</option>`;s.value=v}
+function renderAll(){calcBudgets();renderMonth();renderOptions();renderStats();renderMovements();renderSummary();renderCategories();renderRecs();renderChips();renderPeople();renderAnn();renderDue();renderAssets()}
+function renderMonth(){$("monthLabel").textContent=monthName(month);$("nextM").disabled=month>=shiftMonth(currentCycle(),1);const s=$("budgetScope"),v=s.value||"*";s.innerHTML=`<option value="*">Todos os meses</option><option value="m">Só ${monthName(month)}</option>`;s.value=v}
 function renderOptions(){
  const oc=$("category").value||store.get("lastCat"),of=$("categoryFilter").value;
  const opts=categories.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join("");
@@ -525,6 +492,7 @@ function renderStats(){
  const rows=movements.filter(m=>inMonth(m,month));
  const inc=sum(rows,"receita"),exp=sum(rows,"despesa"),bal=inc-exp;
  $("expenses").textContent=money(exp);$("income").textContent=money(inc);
+ $("balance").textContent=money(bal);$("balance").className=bal<0?"neg":"pos";
 }
 function getFiltered(){
  const w=$("whoFilter").value,c=$("categoryFilter").value,q=lc($("searchFilter").value.trim());
@@ -550,7 +518,7 @@ function renderMovements(){
   el.addEventListener("touchmove",e=>{const dx=e.touches[0].clientX-x0;if(dx<0&&Math.abs(dx)>Math.abs(e.touches[0].clientY-y0))el.style.transform=`translateX(${Math.max(dx,-110)}px)`},{passive:true});
   el.addEventListener("touchend",e=>{const dx=e.changedTouches[0].clientX-x0;el.style.transform="";if(dx<-90&&Math.abs(e.changedTouches[0].clientY-y0)<40){e.preventDefault();deleteMovement(el.dataset.edit)}});
  });
- box.querySelectorAll("[data-dup]").forEach(b=>b.onclick=e=>{e.stopPropagation();const m=movements.find(x=>String(x.id)===b.dataset.dup);resetForm();fillFrom(m);$("notes").value=m.notes;window.scrollTo({top:0,behavior:"smooth"});msg("Copiado para o formulário. Ajusta e guarda.")});
+ box.querySelectorAll("[data-dup]").forEach(b=>b.onclick=e=>{e.stopPropagation();const m=movements.find(x=>String(x.id)===b.dataset.dup);resetForm();fillFrom(m);$("notes").value=m.notes;openTab("movements");window.scrollTo({top:0,behavior:"smooth"});msg("Copiado para o formulário. Ajusta e guarda.")});
 }
 function renderAssets(){
  const colors=["#1769e0","#14804a","#e0a020","#8b5cf6","#e05d44","#0f9fa8","#64748b","#d946ef"];
@@ -584,7 +552,7 @@ function renderSummary(){
  $("budgetTotal").innerHTML=tb?`<div class="cat" style="cursor:default"><div class="t"><span><b>Orçamento total</b></span><span><b>${money(ts)}</b> <span class="small">de ${money(tb)}</span></span></div><div class="bar"><i style="width:${Math.min(100,ts/tb*100)}%;${ts>tb?"background:var(--red)":""}"></i></div><span class="small ${ts>tb?"neg":""}">${ts>tb?"Excedido em "+money(ts-tb):"Restam "+money(tb-ts)}</span></div><hr style="border:0;border-top:1px solid var(--line);margin:0 0 12px">`:"";
  const bw={};cur.forEach(m=>{const k=m.quem||"Sem pessoa";bw[k]=(bw[k]||0)+m.amount});
  $("byWho").innerHTML=Object.entries(bw).map(([k,v])=>`<div class="t person-total"><span>${esc(k)}</span><b>${money(v)}</b></div>`).join("")||'<div class="empty">Sem despesas neste mês.</div>';
- $("breakdown").querySelectorAll("[data-c]").forEach(el=>el.onclick=()=>{$("categoryFilter").value=el.dataset.c;renderMovements();openTab("movements")});
+ $("breakdown").querySelectorAll("[data-c]").forEach(el=>el.onclick=()=>{$("categoryFilter").value=el.dataset.c;renderMovements();openTab("history")});
  const months=[];for(let i=5;i>=0;i--)months.push(shiftMonth(month,-i));
  const data=months.map(m=>({m,e:sum(movements.filter(x=>inMonth(x,m)),"despesa"),r:sum(movements.filter(x=>inMonth(x,m)),"receita")}));
  const max=Math.max(1,...data.map(d=>Math.max(d.e,d.r)));
@@ -601,13 +569,13 @@ function renderCategories(){
 $("movementForm").addEventListener("submit",async e=>{
  e.preventDefault();if(!user)return;clearMsg();
  const id=$("movementId").value;
- const row={user_id:user.id,data:$("date").value,descricao:$("description").value.trim(),categoria:$("category").value,valor:Number($("amount").value),tipo:$("type").value,notas:$("notes").value.trim(),conta_id:$("acc").value||null,quem:$("who").value||null};
+ const row={user_id:user.id,data:$("date").value,descricao:$("description").value.trim(),categoria:$("category").value,valor:Number($("amount").value),tipo:$("type").value,notas:$("notes").value.trim(),quem:$("who").value||null};
  if(!row.data||!row.descricao||!Number.isFinite(row.valor)||row.valor<=0){msg("Preenche a data, a descrição e um valor superior a zero.","error");return}
  $("saveBtn").disabled=true;
  try{
   const r=id?await sb.from("gastos").update(row).eq("id",id).eq("user_id",user.id):await sb.from("gastos").insert(row);
   if(r.error)throw r.error;
-  store.set("lastCat",row.categoria);store.set("eu",row.quem||"");store.set("acc",row.conta_id||"");
+  store.set("lastCat",row.categoria);store.set("eu",row.quem||"");
   if(!id&&$("repeat").checked){const rr=await sb.from("recorrentes_gastos").insert({user_id:user.id,descricao:row.descricao,categoria:row.categoria,valor:row.valor,tipo:row.tipo,dia:Number(row.data.slice(8)),ativo:true,ultimo_mes:row.data.slice(0,7)});if(rr.error)throw rr.error}
   month=cycleKey(row.data); /* ciclo 21 a 20 */
   resetForm();await loadAll();
@@ -619,14 +587,15 @@ $("movementForm").addEventListener("submit",async e=>{
 });
 function editMovement(id){
  const m=movements.find(x=>String(x.id)===String(id));if(!m)return;
+ openTab("movements");
  $("movementId").value=m.id;$("type").value=m.type;$("amount").value=m.amount;$("date").value=m.date;
- $("category").value=m.category;$("description").value=m.description;$("notes").value=m.notes;$("acc").value=m.conta||"";$("who").value=m.quem||"";
+ $("category").value=m.category;$("description").value=m.description;$("notes").value=m.notes;$("who").value=m.quem||"";
  $("formTitle").textContent="Editar movimento";$("saveBtn").textContent="Guardar alterações";
  $("cancelEdit").classList.remove("hidden");$("delEdit").classList.remove("hidden");$("repeatBox").classList.add("hidden");window.scrollTo({top:0,behavior:"smooth"});
 }
 function resetForm(){
  const c=$("category").value;
- $("movementForm").reset();$("who").value=store.get("eu")||"";$("acc").value=store.get("acc")||"";$("movementId").value="";$("date").value=today();
+ $("movementForm").reset();$("who").value=store.get("eu")||"";$("movementId").value="";$("date").value=today();
  if(categories.includes(c))$("category").value=c;
  $("formTitle").textContent="Adicionar movimento";$("saveBtn").textContent="Guardar movimento";$("cancelEdit").classList.add("hidden");$("delEdit").classList.add("hidden");$("repeatBox").classList.remove("hidden");
 }
@@ -697,18 +666,21 @@ async function deleteCategory(name){
 $("prevM").onclick=()=>{month=shiftMonth(month,-1);renderAll()};
 $("nextM").onclick=()=>{month=shiftMonth(month,1);renderAll()};
 
+const SUBTABS=["recurring","categories","import","patrimonio"];
 function openTab(t){
- const valid=["home","movements","history","summary","categories","recurring","import","patrimonio"];
- if(!valid.includes(t))t="home";
- document.querySelectorAll("[data-tab]").forEach(x=>{
-  const active=x.dataset.tab===t;
+ const valid=["home","movements","history","summary","more",...SUBTABS];
+ if(!valid.includes(t))t="movements";
+ const hl=SUBTABS.includes(t)?"more":t;
+ document.querySelectorAll(".tabs [data-tab]").forEach(x=>{
+  const active=x.dataset.tab===hl;
   x.classList.toggle("active",active);
   x.setAttribute("aria-selected",active?"true":"false");
  });
- ["home","movements","history","summary","categories","recurring","accounts","goals","import","patrimonio"].forEach(n=>{
+ valid.forEach(n=>{
   const el=$(n+"Tab");
   if(el)el.classList.toggle("hidden",n!==t);
  });
+ window.scrollTo({top:0});
 }
 document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>openTab(b.dataset.tab));
 
@@ -725,16 +697,9 @@ $("exportBtn").onclick=()=>{
 function subscribe(){
  if(channel)sb.removeChannel(channel);
  const f={event:"*",schema:"public"};
- channel=sb.channel("gastos-sync-"+user.id)
-  .on("postgres_changes",{...f,table:"gastos",filter:"user_id=eq."+user.id},refresh)
-  .on("postgres_changes",{...f,table:"categorias_gastos",filter:"user_id=eq."+user.id},refresh)
-  .on("postgres_changes",{...f,table:"orcamentos_gastos",filter:"user_id=eq."+user.id},refresh)
-  .on("postgres_changes",{...f,table:"recorrentes_gastos",filter:"user_id=eq."+user.id},refresh)
-  .on("postgres_changes",{...f,table:"contas_gastos",filter:"user_id=eq."+user.id},refresh)
-  .on("postgres_changes",{...f,table:"metas_gastos",filter:"user_id=eq."+user.id},refresh)
-  .on("postgres_changes",{...f,table:"anuais_gastos",filter:"user_id=eq."+user.id},refresh)
-  .on("postgres_changes",{...f,table:"patrimonio_gastos",filter:"user_id=eq."+user.id},refresh)
-  .subscribe(s=>{if(s==="SUBSCRIBED")status("Sincronização ativa")});
+ channel=sb.channel("gastos-sync-"+user.id);
+ ["gastos","categorias_gastos","orcamentos_gastos","recorrentes_gastos","anuais_gastos","patrimonio_gastos"].forEach(table=>channel.on("postgres_changes",{...f,table,filter:"user_id=eq."+user.id},refresh));
+ channel.subscribe(s=>{if(s==="SUBSCRIBED")status("Sincronização ativa")});
 }
 function refresh(){clearTimeout(timer);timer=setTimeout(loadAll,500)}
 /* No iPhone a ligação em tempo real pode cair em segundo plano: recarrega ao voltar à app. */
