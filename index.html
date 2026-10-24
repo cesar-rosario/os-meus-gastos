@@ -55,7 +55,7 @@ textarea{min-height:60px;resize:vertical}
 .mv .r button{padding:4px 8px;font-size:12px}
 .day{font-size:12px;font-weight:700;text-transform:uppercase;color:var(--muted);margin:12px 0 0}
 .cat{margin-bottom:12px;cursor:pointer}
-.cat .t{display:flex;justify-content:space-between;gap:8px;font-size:15px}
+.cat .t{display:flex;justify-content:space-between;gap:8px;font-size:15px}.person-total{display:flex;justify-content:space-between;align-items:center;gap:18px;margin-bottom:8px}.person-total span{flex:1;min-width:0}.person-total b{flex:none;white-space:nowrap}
 .bar{height:9px;background:var(--line);border-radius:9px;overflow:hidden;margin:4px 0 2px}
 .bar i{display:block;height:100%;background:var(--blue);border-radius:9px}
 .notice{padding:11px 13px;border-radius:11px;background:#fff5dc;color:#765200;margin-bottom:12px;font-size:14px;overflow-wrap:anywhere}
@@ -169,6 +169,14 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:10px}
     <div class="field full"><label for="rStart">Começa em</label><input id="rStart" type="month" required></div>
    </div><div class="actions"><button type="submit">Adicionar</button></div></form></div>
   <div class="card"><h2>Recorrentes</h2><p class="small">São registados automaticamente, no dia indicado de cada mês, quando abres a app (num dos telemóveis).</p><div id="recList"></div></div>
+  <div class="card"><h2>Despesas anuais (IUC, IMI, seguros, etc.)</h2><p class="small">Regista aqui despesas pagas uma vez por ano. Aparecem em «Contas a pagar» no mês escolhido.</p>
+   <form id="annualForm"><div class="formgrid">
+    <div class="field full"><label for="annualDesc">Descrição</label><input id="annualDesc" maxlength="150" required placeholder="Ex.: IUC do carro"></div>
+    <div class="field"><label for="annualValue">Valor (€)</label><input id="annualValue" type="number" min="0.01" step="0.01" required placeholder="0,00"></div>
+    <div class="field"><label for="annualMonth">Mês em que vence</label><select id="annualMonth" required></select></div>
+   </div><div class="actions"><button type="submit">Adicionar despesa anual</button></div></form>
+   <div id="annList"></div>
+  </div>
  </section>
 <section id="accountsTab" class="hidden">
   <div class="card"><h2>Contas</h2><div id="accList"></div><div class="actions"><button id="namesBtn" class="secondary" type="button">Nomes das pessoas</button></div></div>
@@ -215,8 +223,8 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:10px}
 
 <div id="legacyCompat" hidden aria-hidden="true">
  <select id="acc"><option value="">(sem conta)</option></select>
- <div id="annList"></div>
- <form id="annForm"><input id="nDesc" type="text"><input id="nVal" type="number"><select id="nMes"></select></form>
+ <select id="nMes"><option value="1">Janeiro</option></select>
+ <input id="nDesc" type="text"><input id="nVal" type="number">
 </div>
 <script>
 const SUPABASE_URL="https://gydouittbuvlhgptkdkp.supabase.co";
@@ -387,7 +395,7 @@ function renderPeople(){
  $("acc").innerHTML='<option value="">(sem conta)</option>'+ao;$("acc").value=accounts.some(a=>a.id===oa)?oa:"";
  const iv=$("iAcc").value;$("iAcc").innerHTML=ao||'<option value="">(sem conta)</option>';if(accounts.some(a=>a.id===iv))$("iAcc").value=iv;
  $("tFrom").innerHTML=$("tTo").innerHTML=$("gAcc").innerHTML=ao;
- if(!$("nMes").options.length)$("nMes").innerHTML=[...Array(12)].map((_,i)=>`<option value="${i+1}">${new Date(2026,i,1).toLocaleDateString("pt-PT",{month:"long"})}</option>`).join("");
+ if($("annualMonth") && !$ ("annualMonth").options.length) $("annualMonth").innerHTML=[...Array(12)].map((_,i)=>`<option value="${i+1}">${new Date(2026,i,1).toLocaleDateString("pt-PT",{month:"long"})}</option>`).join("");
  if(!$("tDate").value)$("tDate").value=today();
 }
 function renderAccounts(){
@@ -490,15 +498,17 @@ $("tfForm").addEventListener("submit",async e=>{
 });
 $("goalForm").addEventListener("submit",async e=>{e.preventDefault();if(await ins("metas_gastos",{nome:$("gName").value.trim(),objetivo:Number($("gTarget").value),mensal:Number($("gMonthly").value)||0,conta_id:$("gAcc").value||null})){$("goalForm").reset();msg("Meta criada.","success")}});
 document.querySelectorAll("[data-gn]").forEach(b=>b.onclick=()=>{$("gName").value=b.dataset.gn;$("gTarget").focus()});
-$("annForm").addEventListener("submit",async e=>{e.preventDefault();if(await ins("anuais_gastos",{descricao:$("nDesc").value.trim(),valor:Number($("nVal").value),mes:Number($("nMes").value)})){$("annForm").reset();msg("Despesa anual adicionada.","success")}});
+$("annualForm").addEventListener("submit",async e=>{e.preventDefault();const descricao=$("annualDesc").value.trim(),valor=Number($("annualValue").value),mes=Number($("annualMonth").value);if(!descricao||!(valor>0)||!(mes>=1&&mes<=12)){msg("Preenche a descrição, o valor e o mês de vencimento.","error");return}if(await ins("anuais_gastos",{descricao,valor,mes,pago:false})){$("annualForm").reset();msg("Despesa anual adicionada. Vai aparecer em Contas a pagar no mês escolhido.","success")}});
 $("namesBtn").onclick=()=>{const v=prompt("Nomes das pessoas, separados por vírgula (têm de ser iguais nos dois telemóveis):",pessoas().join(", "));if(v&&v.trim()){store.set("pessoas",v);renderPeople()}};
 
 function renderDue(){
- const key=month, start=cycleStart(key), end=cycleEnd(key), rows=[];
- recs.filter(r=>r.ativo).forEach(r=>{const [ky,km]=key.split("-").map(Number),day=Number(r.dia)||1,dy=day>=21?shiftMonth(key,-1):key;const due=`${dy}-${pad(Math.min(day,new Date(Number(dy.slice(0,4)),Number(dy.slice(5,7)),0).getDate()))}`;if(due>=start&&due<=end){const paid=(r.pago_mes||"")===key;rows.push({id:r.id,kind:"rec",desc:r.descricao,date:due,amount:Number(r.valor),paid});}});
- annuals.forEach(a=>{const dueMonth=Number(a.mes);const yy=Number(key.slice(0,4));const mm=Number(key.slice(5,7));if(dueMonth===mm){rows.push({id:a.id,kind:"ann",desc:a.descricao,date:`${key}-${pad(1)}`,amount:Number(a.valor),paid:!!a.pago});}});
- $("dueList").innerHTML=rows.length?rows.sort((a,b)=>a.date.localeCompare(b.date)).map(r=>`<div class="mv"><div class="l"><strong>${esc(r.desc)}</strong><span class="small">${r.kind==="ann"?"Anual":"Recorrente"} · ${r.date} · ${money(r.amount)}</span></div><div class="r"><b class="${r.paid?"pos":"neg"}">${r.paid?"Paga":"Por pagar"}</b><button class="${r.paid?"secondary":""}" data-paid-kind="${r.kind}" data-paid-id="${r.id}" data-paid="${r.paid?"1":"0"}">${r.paid?"Reabrir":"Marcar paga"}</button></div></div>`).join(""):'<div class="empty">Não há contas a pagar identificadas neste ciclo.</div>';
- $("dueList").querySelectorAll("[data-paid-id]").forEach(b=>b.onclick=async()=>{const paid=b.dataset.paid==="1",tbl=b.dataset.paidKind==="ann"?"anuais_gastos":"recorrentes_gastos",field=b.dataset.paidKind==="ann"?{pago:!paid}:{pago_mes:paid?null:month};const r=await sb.from(tbl).update(field).eq("id",b.dataset.paidId).eq("user_id",user.id);if(r.error){msg("Não foi possível atualizar o estado de pagamento. Executa primeiro o SQL de atualização indicado.","error");return}await loadAll();});
+ const key=month,start=cycleStart(key),end=cycleEnd(key),rows=[];
+ recs.filter(r=>r.ativo).forEach(r=>{const day=Number(r.dia)||1,dy=day>=21?shiftMonth(key,-1):key;const due=`${dy}-${pad(Math.min(day,new Date(Number(dy.slice(0,4)),Number(dy.slice(5,7)),0).getDate()))}`;if(due>=start&&due<=end){const paid=(r.pago_mes||"")===key;rows.push({id:r.id,kind:"rec",desc:r.descricao,date:due,amount:Number(r.valor),paid})}});
+ annuals.forEach(a=>{const dueMonth=Number(a.mes),yy=Number(key.slice(0,4));if(dueMonth===Number(key.slice(5,7))){const due=`${yy}-${pad(dueMonth)}-01`;rows.push({id:a.id,kind:"ann",desc:a.descricao,date:due,amount:Number(a.valor),paid:!!a.pago})}});
+ const unpaid=rows.filter(r=>!r.paid).reduce((t,r)=>t+r.amount,0),all=rows.reduce((t,r)=>t+r.amount,0);
+ const totalHtml=`<div class="mv" style="border-bottom:1px solid var(--line);margin-bottom:5px"><div class="l"><strong>Total por pagar</strong><span class="small">${rows.filter(r=>!r.paid).length} conta(s) por pagar · ${rows.length} no total</span></div><div class="r"><b class="neg">${money(unpaid)}</b><span class="small">Total listado: ${money(all)}</span></div></div>`;
+ $("dueList").innerHTML=totalHtml+(rows.length?rows.sort((a,b)=>a.date.localeCompare(b.date)).map(r=>`<div class="mv"><div class="l"><strong>${esc(r.desc)}</strong><span class="small">${r.kind==="ann"?"Anual":"Recorrente"} · ${r.date} · ${money(r.amount)}</span></div><div class="r"><b class="${r.paid?"pos":"neg"}">${r.paid?"Paga":"Por pagar"}</b><button class="${r.paid?"secondary":""}" data-paid-kind="${r.kind}" data-paid-id="${r.id}" data-paid="${r.paid?"1":"0"}">${r.paid?"Reabrir":"Marcar paga"}</button></div></div>`).join(""):'<div class="empty">Não há contas a pagar identificadas neste ciclo.</div>');
+ $("dueList").querySelectorAll("[data-paid-id]").forEach(b=>b.onclick=async()=>{const paid=b.dataset.paid==="1",tbl=b.dataset.paidKind==="ann"?"anuais_gastos":"recorrentes_gastos",field=b.dataset.paidKind==="ann"?{pago:!paid}:{pago_mes:paid?null:month};const r=await sb.from(tbl).update(field).eq("id",b.dataset.paidId).eq("user_id",user.id);if(r.error){msg("Não foi possível atualizar o estado de pagamento. Executa primeiro o SQL de atualização indicado.","error");return}await loadAll()});
 }
 
 function renderAll(){calcBudgets();renderMonth();renderOptions();renderStats();renderMovements();renderSummary();renderCategories();renderRecs();renderChips();renderPeople();renderAccounts();renderGoals();renderAnn();renderDue();renderAssets()}
@@ -573,7 +583,7 @@ function renderSummary(){
  const tb=Object.values(budgets).reduce((a,b)=>a+b,0),ts=Object.keys(budgets).reduce((x,k)=>x+(c[k]||0),0);
  $("budgetTotal").innerHTML=tb?`<div class="cat" style="cursor:default"><div class="t"><span><b>Orçamento total</b></span><span><b>${money(ts)}</b> <span class="small">de ${money(tb)}</span></span></div><div class="bar"><i style="width:${Math.min(100,ts/tb*100)}%;${ts>tb?"background:var(--red)":""}"></i></div><span class="small ${ts>tb?"neg":""}">${ts>tb?"Excedido em "+money(ts-tb):"Restam "+money(tb-ts)}</span></div><hr style="border:0;border-top:1px solid var(--line);margin:0 0 12px">`:"";
  const bw={};cur.forEach(m=>{const k=m.quem||"Sem pessoa";bw[k]=(bw[k]||0)+m.amount});
- $("byWho").innerHTML=Object.entries(bw).map(([k,v])=>`<div class="t" style="margin-bottom:6px"><span>${esc(k)}</span><b>${money(v)}</b></div>`).join("")||'<div class="empty">Sem despesas neste mês.</div>';
+ $("byWho").innerHTML=Object.entries(bw).map(([k,v])=>`<div class="t person-total"><span>${esc(k)}</span><b>${money(v)}</b></div>`).join("")||'<div class="empty">Sem despesas neste mês.</div>';
  $("breakdown").querySelectorAll("[data-c]").forEach(el=>el.onclick=()=>{$("categoryFilter").value=el.dataset.c;renderMovements();openTab("movements")});
  const months=[];for(let i=5;i>=0;i--)months.push(shiftMonth(month,-i));
  const data=months.map(m=>({m,e:sum(movements.filter(x=>inMonth(x,m)),"despesa"),r:sum(movements.filter(x=>inMonth(x,m)),"receita")}));
@@ -745,5 +755,6 @@ if(initClient()){
 </script>
 </body>
 </html>
+
 
 
